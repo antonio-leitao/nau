@@ -3,7 +3,10 @@ package grid
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -17,10 +20,12 @@ func getThemedProjects(path string, lang string)[]structs.Project{
 	subentries, _ := os.ReadDir(path+"/"+lang)
 	for _,subentry := range subentries{
 		if !validEntry(subentry){continue}
+		latestModTime, _ := getLastAccessTime(path+"/"+lang+"/"+subentry.Name())
 		project := structs.Project{
 			Name:subentry.Name(),
 			Language: lang,
 			Desc: "Lorem Ipsum",
+			LastModified: latestModTime,
 		}
 		themedProjects = append(themedProjects, project)
 	}
@@ -42,10 +47,12 @@ func getProjectNames(path string, projectTypes []string) ([]structs.Project, err
 			themedProjects:=getThemedProjects(path,entry.Name())
 			projectNames = append(projectNames, themedProjects...)
 		} else {
+			latestModTime, _ := getLastAccessTime(path+"/"+entry.Name())
 			project:=structs.Project{
 				Name:entry.Name(),
 				Language: "Mixed",
 				Desc: "Lorem Ipsum",
+				LastModified: latestModTime,
 			}
 			projectNames = append(projectNames, project)
 		}
@@ -73,8 +80,17 @@ func validEntry(entry os.DirEntry)bool{
 	return true
 }
 
-//BUBBLE TEA MODEL
+func getLastAccessTime(dirPath string) (time.Time, error) {
+    stat, err := os.Stat(dirPath)
+    if err != nil {
+        return time.Time{}, err
+    }
+    info := stat.Sys().(*syscall.Stat_t)
+    lastAccessTime := time.Unix(int64(info.Atimespec.Sec), int64(info.Atimespec.Nsec))
+    return lastAccessTime, nil
+}
 
+//----------------BUBBLE TEA----------------------
 var docStyle = lipgloss.NewStyle().Margin(1, 2)
 
 type item struct {
@@ -116,6 +132,16 @@ func (m model) View() string {
 func Grid(config structs.Config) {
 	//get project names
 	projectNames,_ := getProjectNames(config.Projects_path,config.Projects_themes)
+	//sort list based on last modified
+	sort.SliceStable(projectNames, func(i, j int) bool {
+		return projectNames[i].LastModified.After(projectNames[j].LastModified)
+	})
+
+	// for _, project := range projectNames {
+	// 	fmt.Println(project.LastModified, project.Name)
+	// }
+
+	//make bubbletea list
 	items := make([]list.Item, len(projectNames))
 	for i, project := range projectNames {
 		items[i] = list.Item(project)
@@ -124,7 +150,6 @@ func Grid(config structs.Config) {
 	//start list with those names
 	m := model{list: list.New(items, list.NewDefaultDelegate(), 0, 0)}
 	m.list.Title = "Projects"
-
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
 

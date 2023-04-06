@@ -1,5 +1,11 @@
 package structs
 
+import (
+	"regexp"
+	"strings"
+	"time"
+)
+
 type Config struct {
     Name              string   `toml:"name"`
     Version           int      `toml:"version"`
@@ -13,6 +19,7 @@ type Project struct {
 	Name          string
 	Language      string
 	Desc          string
+	LastModified  time.Time
 }
 
 // implement the list.Item interface
@@ -20,8 +27,19 @@ func (p Project) FilterValue() string {
 	return p.Name + p.Desc
 }
 
+// func (p Project) Title() string {
+// 	return p.Name
+// }
+
 func (p Project) Title() string {
-	return p.Name
+	
+    parts := strings.Split(p.Name, "_")
+	if len(parts)<2{
+		return parts[0]
+	}
+	var matchAllCap   = regexp.MustCompile("([a-z0-9])([A-Z])")
+	name  := matchAllCap.ReplaceAllString(parts[1], "${1} ${2}")
+	return name
 }
 
 func (p Project) Description() string {
