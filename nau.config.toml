@@ -1,0 +1,6 @@
+name = "NAU"
+version = 0
+author = "Antonio Leitao"
+url =  "antonio-leitao.github.io"
+projects = ["Rust","Python","Go","Web"]
+projects_path = "/Users/antonio/Documents/Projects"
