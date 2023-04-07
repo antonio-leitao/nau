@@ -3,10 +3,11 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 
-	grid "github.com/antonio-leitao/nau/lib/grid"
+	open "github.com/antonio-leitao/nau/lib/open"
 	structs "github.com/antonio-leitao/nau/lib/structs"
 )
 
@@ -31,18 +32,22 @@ func main() {
 	// Parse the command-line arguments
 	if len(os.Args) < 2 {
 		//home.Home()
-		grid.Grid(config)
-		os.Exit(1)
+		fmt.Printf("TODO: Nau's homepage, a TUI.")
 	}
 
-	//command := strings.ToLower(os.Args[1])
+	command := strings.ToLower(os.Args[1])
 
 	// Launch the appropriate command
-	// switch command {
-	// case "new":
-	// 	new.New()
-	// default:
-	// 	fmt.Printf("Unknown command: %s\n", command)
-	// 	os.Exit(1)
-	// }
+	switch command {
+	case "open":
+		if len(os.Args) < 3 {
+			fmt.Printf("TODO: list and choose all projects")
+			os.Exit(1)
+		}
+		open.Open(config, os.Args[2])
+		os.Exit(1)
+	default:
+		fmt.Printf("Unknown command: %s\n", command)
+		os.Exit(1)
+	}
 }
