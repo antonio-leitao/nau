@@ -3,6 +3,7 @@ package open
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 
 	structs "github.com/antonio-leitao/nau/lib/structs"
@@ -87,11 +88,19 @@ func Open(config structs.Config, query string) {
 	projectList,_ := getProjectNames(config.Projects_path,config.Projects_themes)
 	projects := Projects(projectList)
 	candidates := fuzzy.FindFrom(query, projects)
+
+	//exit it nothing is found
 	if len(candidates)==0{
 		fmt.Println("ERROR: No project found")
 		os.Exit(1)
-	}else{
-		fmt.Println(projects[candidates[0].Index])
 	}
-	
+
+	//open vscode if something is found
+	path := projects[candidates[0].Index].path
+    cmd := exec.Command("code", path)
+    err := cmd.Run()
+    if err != nil {
+        fmt.Println(err)
+        return
+    }	
 }

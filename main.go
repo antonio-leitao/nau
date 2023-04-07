@@ -7,6 +7,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 
+	configure "github.com/antonio-leitao/nau/lib/configure"
 	open "github.com/antonio-leitao/nau/lib/open"
 	structs "github.com/antonio-leitao/nau/lib/structs"
 )
@@ -42,10 +43,26 @@ func main() {
 	case "open":
 		if len(os.Args) < 3 {
 			fmt.Printf("TODO: list and choose all projects")
-			os.Exit(1)
+			os.Exit(0)
 		}
 		open.Open(config, os.Args[2])
 		os.Exit(1)
+	case "config":
+		switch len(os.Args){
+		case 2:
+			config.Print()
+			return
+		case 4:
+			err = configure.UpdateConfigField(&config, os.Args[2], os.Args[3])
+			if err != nil {
+				fmt.Println("Error updating config file file:", err)
+				os.Exit(1)
+			}
+			return
+		default:
+			fmt.Println("Error please supply more arguments:", err)
+			os.Exit(1)
+		}
 	default:
 		fmt.Printf("Unknown command: %s\n", command)
 		os.Exit(1)
