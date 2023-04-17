@@ -8,6 +8,7 @@ import (
 	"github.com/BurntSushi/toml"
 
 	configure "github.com/antonio-leitao/nau/lib/configure"
+	new "github.com/antonio-leitao/nau/lib/new"
 	open "github.com/antonio-leitao/nau/lib/open"
 	structs "github.com/antonio-leitao/nau/lib/structs"
 )
@@ -43,12 +44,19 @@ func main() {
 	case "open":
 		if len(os.Args) < 3 {
 			fmt.Printf("TODO: list and choose all projects")
-			os.Exit(0)
+			os.Exit(1)
 		}
 		open.Open(config, os.Args[2])
+		os.Exit(0)
+	case "new":
+		if len(os.Args) < 3 {
+			fmt.Printf("TODO: list and choose all projects")
+			os.Exit(0)
+		}
+		new.NewPrompt(config, os.Args[2])
 		os.Exit(1)
 	case "config":
-		switch len(os.Args){
+		switch len(os.Args) {
 		case 2:
 			config.Print()
 			return
