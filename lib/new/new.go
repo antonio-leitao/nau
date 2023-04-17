@@ -12,12 +12,14 @@ import (
 type Styles struct {
 	BorderColor lipgloss.Color
 	InputField  lipgloss.Style
+	InactiveField lipgloss.Style
 }
 
 func DefaultStyles() *Styles {
 	s := new(Styles)
 	s.BorderColor = lipgloss.Color("36")
 	s.InputField = lipgloss.NewStyle().BorderForeground(s.BorderColor).BorderStyle(lipgloss.NormalBorder()).Padding(1).Width(80)
+	s.InactiveField = lipgloss.NewStyle().BorderForeground(lipgloss.Color("12")).BorderStyle(lipgloss.NormalBorder()).Padding(1).Width(80)
 	return s
 }
 
@@ -64,7 +66,6 @@ func (m Main) Init() tea.Cmd {
 }
 
 func (m Main) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	current := &m.questions[m.index]
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -72,46 +73,27 @@ func (m Main) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "ctrl+c", "q":
+		case "ctrl+c", "q", "esc":
 			return m, tea.Quit
+		case "ctrl+d":
+			m.done = true
 		case "tab":
-			if m.index == len(m.questions)-1 {
-				m.done = true
-			}
-			current.answer = current.input.Value()
 			m.Next()
-			return m, current.input.Blur
 		}
 	}
-	current.input, cmd = current.input.Update(msg)
+	for i := range m.questions{
+		if i==m.index{
+			m.questions[i].input.Focus()
+			m.questions[i].answer = m.questions[i].input.Value()
+			m.questions[i].input, cmd = m.questions[i].input.Update(msg)
+		}else{
+			m.questions[i].input.Blur()
+		}
+	}
 	return m, cmd
 }
 
-// func (m Main) View() string {
-// 	current := m.questions[m.index]
-// 	if m.done {
-// 		var output string
-// 		for _, q := range m.questions {
-// 			output += fmt.Sprintf("%s: %s\n", q.question, q.answer)
-// 		}
-// 		return output
-// 	}
-// 	if m.width == 0 {
-// 		return "loading..."
-// 	}
-// 	// stack some left-aligned strings together in the center of the window
-// 	return lipgloss.Place(
-// 		m.width,
-// 		m.height,
-// 		lipgloss.Center,
-// 		lipgloss.Center,
-// 		lipgloss.JoinVertical(
-// 			lipgloss.Left,
-// 			current.question,
-// 			m.styles.InputField.Render(current.input.View()),
-// 		),
-// 	)
-// }
+
 
 func (m Main) View() string {
 	if m.done {
@@ -126,12 +108,17 @@ func (m Main) View() string {
 	}
 
 	blocks := []string{}
-	for _,current := range m.questions{
+	for index,current := range m.questions{
+		var style lipgloss.Style
+		style = m.styles.InactiveField
+		if index == m.index{
+			style = m.styles.InputField
+		}
 		blocks=append(blocks,
 			lipgloss.JoinVertical(
 				lipgloss.Left,
 				current.question,
-				m.styles.InputField.Render(current.input.View()),
+				style.Render(current.input.View()),
 			),
 		)
 	}

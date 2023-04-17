@@ -28,7 +28,7 @@ func NewShortAnswerField() *shortAnswerField {
 
 	model := textinput.New()
 	model.Placeholder = "Your answer here"
-	model.Focus()
+	//model.Focus()
 
 	a.textinput = model
 	return &a
@@ -77,7 +77,7 @@ func NewLongAnswerField() *longAnswerField {
 
 	model := textarea.New()
 	model.Placeholder = "Your answer here"
-	model.Focus()
+	//model.Focus()
 
 	a.textarea = model
 	return &a
