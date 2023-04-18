@@ -2,6 +2,7 @@ package new
 
 import (
 	"fmt"
+	"strings"
 
 	structs "github.com/antonio-leitao/nau/lib/structs"
 	"github.com/charmbracelet/bubbles/help"
@@ -11,6 +12,15 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
+
+type Submission struct{
+	project_name string
+	folder_name string
+	id string
+	description string
+	git bool
+	repo string
+}
 
 type KeyMap struct {
     Next key.Binding
@@ -61,17 +71,26 @@ type Model struct {
 	index int
 	inputs     []textinput.Model
 	summary textarea.Model
+	errors []string
+	done bool
+	existing_codes []string
+	existing_names []string
 }
 
-func newModel()Model{
+func newModel(existing_names []string, existing_codes []string)Model{
 	m:=Model{
 		showHelp: true,
 		KeyMap: DefaultKeyMap,
 		Styles : DefaultStyles(),
 		Help:help.New(),
 		index: 0,
-		inputs: make([]textinput.Model, 3),
+		inputs: make([]textinput.Model, 2),
 		summary: textarea.New(),
+		errors: []string{"",""},
+		done: false,
+		existing_codes: existing_codes,
+		existing_names: existing_names,
+
 	}
 
 	//style of the inputs
@@ -90,10 +109,6 @@ func newModel()Model{
 		case 1:
 			t.Placeholder = "XXX"
 			t.CharLimit = 3
-		case 2:
-			t.Placeholder = "Password"
-			t.EchoMode = textinput.EchoPassword
-			t.EchoCharacter = '•'
 		}
 
 		m.inputs[i] = t
@@ -128,6 +143,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m,cmd := m.forceBounds()
 			return m, cmd
 
+		//submission
+		case key.Matches(msg,  m.KeyMap.Submit):
+			//validate
+			m.Validate()
+			if allStringsEmpty(m.errors){
+				m.done = true
+				//submit and quit
+			}
+				
         case key.Matches(msg,  m.KeyMap.Quit):
 			return m, tea.Quit
 		case key.Matches(msg, m.KeyMap.ShowFullHelp):
@@ -142,19 +166,55 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View()string{
+	if m.done {
+		return "Show some progress or something"
+	}
 	var sections []string
-
-	sections=append(sections,"Hello world\n\n")
-
+	//make styles here
+	sections=append(sections,"\nName and ID"+m.errors[0]+m.errors[1])
 	for i := range m.inputs {
 		sections=append(sections,m.inputs[i].View())
 	}
+	sections=append(sections,"\nDescription")
 	sections=append(sections,m.summary.View())
 	if m.showHelp {
 		sections = append(sections, m.helpView())
 	}
 	return lipgloss.JoinVertical(lipgloss.Left, sections...)
 }
+
+func contained(str string, slice []string) bool {
+    for _, s := range slice {
+        if s == str {
+            return true
+        }
+    }
+    return false
+}
+
+func allStringsEmpty(strList []string) bool {
+    for _, str := range strList {
+        if len(str) != 0 {
+            return false
+        }
+    }
+    return true
+}
+
+func (m Model) Validate(){
+	//if empty conditions
+	//m.errors = []string{"",""}
+	//validate name and code
+	name := ToHyphenName(m.inputs[0].Value())
+	if contained(name, m.existing_names) {
+		m.errors[0] = "Name already in use"
+	} 
+	code := strings.ToUpper(m.inputs[1].Value())
+	if contained(code, m.existing_codes) {
+		m.errors[1] = "Code already in use"
+	}
+}	
+
 
 func (m Model) forceBounds()(tea.Model, tea.Cmd){
 	if m.index > len(m.inputs) {
@@ -180,7 +240,7 @@ func (m Model) forceBounds()(tea.Model, tea.Cmd){
 
 	//handle summary
 	var cmd tea.Cmd
-	if m.index == 3{
+	if m.index == len(m.inputs){
 		cmd = m.summary.Focus()
 	} else {
 		m.summary.Blur()
@@ -204,8 +264,6 @@ func (m *Model) updateInputs(msg tea.Msg) tea.Cmd {
 	cmds = append(cmds,cmd)
 	return tea.Batch(cmds...)
 }
-
-
 
 
 func (m Model) helpView() string {
@@ -235,10 +293,15 @@ func (m Model) ShortHelp() []key.Binding {
 	return kb
 }
 
-
 func New(config structs.Config, query string){
-	p:=tea.NewProgram(newModel(),tea.WithAltScreen())
+	//get all projects names
+	codes, folderNames := GetProjects(config.Projects_path, config.Projects_themes)
+	
+	//start application
+	p:=tea.NewProgram(newModel(folderNames,codes),tea.WithAltScreen())
 	if _, err :=p.Run();err !=nil{
 		fmt.Println(err)
 	}
 }
+
+
