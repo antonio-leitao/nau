@@ -53,7 +53,7 @@ func main() {
 			fmt.Printf("TODO: list and choose all projects")
 			os.Exit(0)
 		}
-		new.NewPrompt(config, os.Args[2])
+		new.New(config, os.Args[2])
 		os.Exit(1)
 	case "config":
 		switch len(os.Args) {

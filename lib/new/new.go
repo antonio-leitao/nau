@@ -2,155 +2,137 @@ package new
 
 import (
 	"fmt"
-	"os"
 
 	structs "github.com/antonio-leitao/nau/lib/structs"
+	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
-type Styles struct {
-	BorderColor lipgloss.Color
-	InputField  lipgloss.Style
-	InactiveField lipgloss.Style
+
+
+type KeyMap struct {
+    Next key.Binding
+    Prev key.Binding
+	Submit key.Binding
+	Quit key.Binding
+	// Help toggle keybindings.
+	ShowFullHelp  key.Binding
+	CloseFullHelp key.Binding
+	
 }
 
-func DefaultStyles() *Styles {
-	s := new(Styles)
-	s.BorderColor = lipgloss.Color("36")
-	s.InputField = lipgloss.NewStyle().BorderForeground(s.BorderColor).BorderStyle(lipgloss.NormalBorder()).Padding(1).Width(80)
-	s.InactiveField = lipgloss.NewStyle().BorderForeground(lipgloss.Color("12")).BorderStyle(lipgloss.NormalBorder()).Padding(1).Width(80)
-	return s
+var DefaultKeyMap = KeyMap{
+    Next: key.NewBinding(
+        key.WithKeys("tab"),        // actual keybindings
+        key.WithHelp("tab", "next field"), // corresponding help text
+    ),
+    Prev: key.NewBinding(
+        key.WithKeys("shift+tab"),
+        key.WithHelp("shift+tab", "prev field"),
+    ),
+	Submit: key.NewBinding(
+        key.WithKeys("ctrl+d"),
+        key.WithHelp("ctrl+d", "submit"),
+    ),
+	Quit: key.NewBinding(
+        key.WithKeys("ctrl+c", "esc"),
+        key.WithHelp("ctrl+c/esc", "quit"),
+    ),
+	// Toggle help.
+	ShowFullHelp: key.NewBinding(
+		key.WithKeys("?"),
+		key.WithHelp("?", "more"),
+	),
+	CloseFullHelp: key.NewBinding(
+		key.WithKeys("?"),
+		key.WithHelp("?", "close help"),
+	),
+	
 }
 
-type Main struct {
-	styles    *Styles
-	index     int
-	questions []Question
-	width     int
-	height    int
-	done      bool
+type Model struct {
+	showHelp   bool
+	KeyMap 	   KeyMap
+	Styles     Styles
+	Help help.Model
+
 }
 
-type Question struct {
-	question string
-	answer   string
-	input    Input
+func newModel()Model{
+	m:=Model{
+		showHelp: true,
+		KeyMap: DefaultKeyMap,
+		Styles : DefaultStyles(),
+		Help:help.New(),
+	}
+	return m
 }
 
-func newQuestion(q string) Question {
-	return Question{question: q}
+func (m Model) Init()tea.Cmd{
+	
+	return nil
 }
 
-func newShortQuestion(q string) Question {
-	question := newQuestion(q)
-	model := NewShortAnswerField()
-	question.input = model
-	return question
-}
-
-func newLongQuestion(q string) Question {
-	question := newQuestion(q)
-	model := NewLongAnswerField()
-	question.input = model
-	return question
-}
-
-func New(questions []Question) *Main {
-	styles := DefaultStyles()
-	return &Main{styles: styles, questions: questions}
-}
-
-func (m Main) Init() tea.Cmd {
-	return m.questions[m.index].input.Blink
-}
-
-func (m Main) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
+func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c", "q", "esc":
+    case tea.KeyMsg:
+        switch {
+        case key.Matches(msg, DefaultKeyMap.Quit):
 			return m, tea.Quit
-		case "ctrl+d":
-			m.done = true
-		case "tab":
-			m.Next()
-		}
+		case key.Matches(msg, m.KeyMap.ShowFullHelp):
+			fallthrough
+		case key.Matches(msg, m.KeyMap.CloseFullHelp):
+			m.Help.ShowAll = !m.Help.ShowAll
+        }
+    }
+	return m, nil
+}
+
+func (m Model) View()string{
+	var sections []string
+
+	sections=append(sections,"Hello world\n\n")
+
+	if m.showHelp {
+		sections = append(sections, m.helpView())
 	}
-	for i := range m.questions{
-		if i==m.index{
-			m.questions[i].input.Focus()
-			m.questions[i].answer = m.questions[i].input.Value()
-			m.questions[i].input, cmd = m.questions[i].input.Update(msg)
-		}else{
-			m.questions[i].input.Blur()
-		}
-	}
-	return m, cmd
+	return lipgloss.JoinVertical(lipgloss.Left, sections...)
 }
 
 
-
-func (m Main) View() string {
-	if m.done {
-		var output string
-		for _, q := range m.questions {
-			output += fmt.Sprintf("%s: %s\n", q.question, q.answer)
-		}
-		return output
-	}
-	if m.width == 0 {
-		return "loading..."
-	}
-
-	blocks := []string{}
-	for index,current := range m.questions{
-		var style lipgloss.Style
-		style = m.styles.InactiveField
-		if index == m.index{
-			style = m.styles.InputField
-		}
-		blocks=append(blocks,
-			lipgloss.JoinVertical(
-				lipgloss.Left,
-				current.question,
-				style.Render(current.input.View()),
-			),
-		)
-	}
-	// stack some left-aligned strings together in the center of the window
-	return lipgloss.Place(
-		m.width,
-		m.height,
-		lipgloss.Center,
-		lipgloss.Center,
-		lipgloss.JoinVertical(
-			lipgloss.Left,
-			blocks...,
-		),
-	)
+func (m Model) helpView() string {
+	return m.Styles.HelpStyle.Render(m.Help.View(m))
 }
 
-func (m *Main) Next() {
-	if m.index < len(m.questions)-1 {
-		m.index++
-	} else {
-		m.index = 0
-	}
+// FullHelp returns bindings to show the full help view. It's part of the
+// help.KeyMap interface.
+func (m Model) FullHelp() [][]key.Binding {
+	kb := [][]key.Binding{{
+		m.KeyMap.Next,
+		m.KeyMap.Prev,
+		m.KeyMap.Submit,
+		m.KeyMap.Quit,
+		m.KeyMap.CloseFullHelp,
+	}}
+
+	return kb
 }
 
-func NewPrompt(config structs.Config, query string) {
-	// init styles; optional, just showing as a way to organize styles
-	// start bubble tea and init first model
-	questions := []Question{newShortQuestion("what is your name?"), newShortQuestion("what is your favourite editor?"), newLongQuestion("what's your favourite quote?")}
-	main := New(questions)
+func (m Model) ShortHelp() []key.Binding {
+	kb := []key.Binding{
+		m.KeyMap.Submit,
+		m.KeyMap.Quit,
+		m.KeyMap.ShowFullHelp,
+	}
+	return kb
+}
 
-	p := tea.NewProgram(*main, tea.WithAltScreen())
-	if _, err := p.Run(); err != nil {
-		os.Exit(1)
+
+func New(config structs.Config, query string){
+	p:=tea.NewProgram(newModel(),tea.WithAltScreen())
+	if _, err :=p.Run();err !=nil{
+		fmt.Println(err)
 	}
 }

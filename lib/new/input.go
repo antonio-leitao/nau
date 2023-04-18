@@ -76,6 +76,7 @@ func NewLongAnswerField() *longAnswerField {
 	a := longAnswerField{}
 
 	model := textarea.New()
+	model.ShowLineNumbers=false
 	model.Placeholder = "Your answer here"
 	//model.Focus()
 
