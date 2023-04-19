@@ -8,14 +8,14 @@ import (
 )
 
 func contains(slice []string, str string) bool {
-    for _, item := range slice {
-        if item == str {
-            return true
-        }
-    }
-    return false
+	for _, item := range slice {
+		if item == str {
+			return true
+		}
+	}
+	return false
 }
-func validEntry(entry os.DirEntry)bool{
+func validEntry(entry os.DirEntry) bool {
 	if !entry.IsDir() {
 		return false
 	}
@@ -25,11 +25,13 @@ func validEntry(entry os.DirEntry)bool{
 	return true
 }
 
-func getThemedProjects(path string, lang string)[]string{
+func getThemedProjects(path string, lang string) []string {
 	var themedProjects []string
-	subentries, _ := os.ReadDir(path+"/"+lang)
-	for _,subentry := range subentries{
-		if !validEntry(subentry){continue}
+	subentries, _ := os.ReadDir(path + "/" + lang)
+	for _, subentry := range subentries {
+		if !validEntry(subentry) {
+			continue
+		}
 		project := subentry.Name()
 		themedProjects = append(themedProjects, project)
 	}
@@ -39,37 +41,38 @@ func getThemedProjects(path string, lang string)[]string{
 func getProjectNames(path string, projectTypes []string) ([]string, error) {
 	var projectNames []string
 	entries, err := os.ReadDir(path)
-    if err != nil {
-        return nil, err
-    }
-    for _, entry := range entries {
-		if !validEntry(entry){continue}
-		if contains(projectTypes,entry.Name()){
-			themedProjects:=getThemedProjects(path,entry.Name())
+	if err != nil {
+		return nil, err
+	}
+	for _, entry := range entries {
+		if !validEntry(entry) {
+			continue
+		}
+		if contains(projectTypes, entry.Name()) {
+			themedProjects := getThemedProjects(path, entry.Name())
 			projectNames = append(projectNames, themedProjects...)
 		} else {
 			project := entry.Name()
 			projectNames = append(projectNames, project)
 		}
-    }
-    return projectNames, nil
+	}
+	return projectNames, nil
 }
 
-func handleProjectNames(projectNames []string)([]string, []string){
+func handleProjectNames(projectNames []string) ([]string, []string) {
 	var codes []string
 	var folderNames []string
-	for _, projectName := range projectNames{
-		codes = append(codes,projectName[:3])
-		folderNames = append(folderNames,ToHyphenName(projectName[:3]))  
+	for _, projectName := range projectNames {
+		codes = append(codes, projectName[:3])
+		folderNames = append(folderNames, ToHyphenName(projectName[:3]))
 	}
 	return codes, folderNames
 }
 
-
-//stuff that gets exported
-func GetProjects(path string, projectTypes []string)([]string, []string){
-	projectNames, err :=getProjectNames(path,projectTypes)
-	if err !=nil{
+// stuff that gets exported
+func GetProjects(path string, projectTypes []string) ([]string, []string) {
+	projectNames, err := getProjectNames(path, projectTypes)
+	if err != nil {
 		fmt.Println(err)
 	}
 	codes, folderNames := handleProjectNames(projectNames)

@@ -13,43 +13,52 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-type Submission struct{
+type Submission struct {
 	project_name string
-	folder_name string
-	id string
-	description string
-	git bool
-	repo string
+	folder_name  string
+	repo_name    string
+	description  string
+	git          bool
 }
 
 type KeyMap struct {
-    Next key.Binding
-    Prev key.Binding
+	Next   key.Binding
+	Prev   key.Binding
 	Submit key.Binding
-	Quit key.Binding
+	Quit   key.Binding
+	Enter  key.Binding
+	Toggle key.Binding
 	// Help toggle keybindings.
 	ShowFullHelp  key.Binding
 	CloseFullHelp key.Binding
-	
 }
 
 var DefaultKeyMap = KeyMap{
-    Next: key.NewBinding(
-        key.WithKeys("tab"),        // actual keybindings
-        key.WithHelp("tab", "next field"), // corresponding help text
-    ),
-    Prev: key.NewBinding(
-        key.WithKeys("shift+tab"),
-        key.WithHelp("shift+tab", "prev field"),
-    ),
+	Next: key.NewBinding(
+		key.WithKeys("tab"),         // actual keybindings
+		key.WithHelp("tab", "next"), // corresponding help text
+	),
+	Prev: key.NewBinding(
+		key.WithKeys("shift+tab"),
+		key.WithHelp("shift+tab", "prev"),
+	),
 	Submit: key.NewBinding(
-        key.WithKeys("ctrl+d"),
-        key.WithHelp("ctrl+d", "submit"),
-    ),
+		key.WithKeys("ctrl+d"),
+		key.WithHelp("ctrl+d", "submit"),
+	),
+	//confirmation keys
+	Enter: key.NewBinding(
+		key.WithKeys("enter"),
+		key.WithHelp("enter", "confirm"),
+	),
+	Toggle: key.NewBinding(
+		key.WithKeys("left", "shift+tab", "tab", "right", "h", "l"),
+		key.WithHelp("←/→/tab", "choose"),
+	),
 	Quit: key.NewBinding(
-        key.WithKeys("ctrl+c", "esc"),
-        key.WithHelp("ctrl+c/esc", "quit"),
-    ),
+		key.WithKeys("ctrl+c", "esc"),
+		key.WithHelp("ctrl+c/esc", "quit"),
+	),
 	// Toggle help.
 	ShowFullHelp: key.NewBinding(
 		key.WithKeys("?"),
@@ -59,43 +68,45 @@ var DefaultKeyMap = KeyMap{
 		key.WithKeys("?"),
 		key.WithHelp("?", "close help"),
 	),
-	
 }
-
 
 type Model struct {
-	showHelp   bool
-	KeyMap 	   KeyMap
-	Styles     Styles
-	Help help.Model
-	index int
-	inputs     []textinput.Model
-	summary textarea.Model
-	errors []string
-	status string
+	//existing projects
 	existing_codes []string
 	existing_names []string
+	//basic info
+	showHelp bool
+	KeyMap   KeyMap
+	Styles   Styles
+	Help     help.Model
+	index    int
+	inputs   []textinput.Model
+	summary  textarea.Model
+	errors   []string
+	status   string
+	//git confirmatio
+	confirmation bool
 }
 
-func newModel(existing_names []string, existing_codes []string)Model{
-	m:=Model{
-		showHelp: true,
-		KeyMap: DefaultKeyMap,
-		Styles : DefaultStyles(),
-		Help:help.New(),
-		index: 0,
-		inputs: make([]textinput.Model, 2),
-		summary: textarea.New(),
-		errors: []string{"",""},
-		status: "info",
+func newModel(existing_names []string, existing_codes []string) Model {
+	m := Model{
+		showHelp:       true,
+		KeyMap:         DefaultKeyMap,
+		Styles:         DefaultStyles(),
+		Help:           help.New(),
+		index:          0,
+		inputs:         make([]textinput.Model, 2),
+		summary:        textarea.New(),
+		errors:         []string{"", ""},
+		status:         "info",
 		existing_codes: existing_codes,
 		existing_names: existing_names,
-
+		confirmation:   true,
 	}
 
 	//style of the inputs
 	var t textinput.Model
-	for i := range m.inputs{
+	for i := range m.inputs {
 		t = textinput.New()
 		t.CursorStyle = m.Styles.FocusedStyle
 		t.CharLimit = 24
@@ -114,64 +125,100 @@ func newModel(existing_names []string, existing_codes []string)Model{
 		m.inputs[i] = t
 	}
 	//style of the text area
-	m.summary.Placeholder="Describe you project"
+	m.summary.Placeholder = "Describe you project"
 	m.summary.ShowLineNumbers = false
-	m.summary.SetWidth(56)
+	m.summary.SetWidth(48)
 	m.summary.SetHeight(6)
 	m.summary.CharLimit = 256
 	return m
 }
 
-func (m Model) Init()tea.Cmd{
+func (m Model) Init() tea.Cmd {
 	return nil
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch m.status {
+	case "done":
+		return m.UpdateDone(msg)
+	default:
+		return m.UpdateInfo(msg)
+	}
+}
+
+func (m Model) UpdateInfo(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-    case tea.KeyMsg:
-        switch {
-		
-		//next field 
-		case key.Matches(msg,  m.KeyMap.Next):
+	case tea.KeyMsg:
+		switch {
+
+		//next field
+		case key.Matches(msg, m.KeyMap.Next):
 			m.index++
-			m,cmd := m.forceBounds()
+			m, cmd := m.forceBounds()
 			return m, cmd
 
 		//previous field
-		case key.Matches(msg,  m.KeyMap.Prev):
+		case key.Matches(msg, m.KeyMap.Prev):
 			m.index--
-			m,cmd := m.forceBounds()
+			m, cmd := m.forceBounds()
 			return m, cmd
 
 		//submission
-		case key.Matches(msg,  m.KeyMap.Submit):
+		case key.Matches(msg, m.KeyMap.Submit):
 			//validate
-			if allStringsEmpty(m.errors){
+			if allStringsEmpty(m.errors) {
 				m.status = "done"
 				//submit and quit
 			}
-				
-        case key.Matches(msg,  m.KeyMap.Quit):
+
+		case key.Matches(msg, m.KeyMap.Quit):
 			return m, tea.Quit
 		case key.Matches(msg, m.KeyMap.ShowFullHelp):
 			fallthrough
 		case key.Matches(msg, m.KeyMap.CloseFullHelp):
 			m.Help.ShowAll = !m.Help.ShowAll
-        }
-    }
+		}
+	}
 	// Handle character input
 	cmd := m.updateInputs(msg)
 	return m, cmd
 }
 
-func (m Model) View()string{
+func (m Model) UpdateDone(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+
+		//next field
+		case key.Matches(msg, m.KeyMap.Toggle):
+			m.confirmation = !m.confirmation
+			return m, nil
+
+		//submission
+		case key.Matches(msg, m.KeyMap.Enter):
+			if allStringsEmpty(m.errors) {
+				m.status = "info"
+			}
+
+		case key.Matches(msg, m.KeyMap.Quit):
+			return m, tea.Quit
+		case key.Matches(msg, m.KeyMap.ShowFullHelp):
+			fallthrough
+		case key.Matches(msg, m.KeyMap.CloseFullHelp):
+			m.Help.ShowAll = !m.Help.ShowAll
+		}
+	}
+	return m, nil
+}
+
+func (m Model) View() string {
 	switch m.status {
 	case "info":
 		var sections []string
 		//make styles here
-		sections=append(sections,m.Styles.Title.Render("Name and ID"))
+		sections = append(sections, m.Styles.Title.Render("Name and ID"))
 		for i := range m.inputs {
-			sections=append(
+			sections = append(
 				sections,
 				lipgloss.JoinHorizontal(
 					lipgloss.Left,
@@ -180,54 +227,87 @@ func (m Model) View()string{
 				),
 			)
 		}
-		sections=append(sections,m.Styles.Title.Render("Description"))
-		sections=append(sections,m.summary.View())
+		sections = append(sections, m.Styles.Title.Render("Description"))
+		sections = append(sections, m.summary.View())
 		if m.showHelp {
 			sections = append(sections, m.helpView())
 		}
 		return lipgloss.JoinVertical(lipgloss.Left, sections...)
 
 	case "done":
-		return "Show some progress or something"
+		return m.ConfirmView()
 	}
 	return "Error"
 }
 
+func (m Model) ConfirmView() string {
+
+	var aff, neg string
+	var sections []string
+	sections = append(sections, m.Styles.PromptStyle.Render("Start Git?"))
+
+	if m.confirmation {
+		aff = m.Styles.SelectedStyle.Render("Yes")
+		neg = m.Styles.UnselectedStyle.Render("No")
+	} else {
+		aff = m.Styles.UnselectedStyle.Render("Yes")
+		neg = m.Styles.SelectedStyle.Render("No")
+	}
+	sections = append(sections,
+		lipgloss.NewStyle().Margin(0, 0, 2, 0).Render(lipgloss.JoinHorizontal(lipgloss.Left, aff, neg)))
+	if m.showHelp {
+		sections = append(sections, m.helpView())
+	}
+
+	return lipgloss.JoinVertical(lipgloss.Center, sections...)
+}
+
 func contained(str string, slice []string) bool {
-    for _, s := range slice {
-        if s == str {
-            return true
-        }
-    }
-    return false
+	for _, s := range slice {
+		if s == str {
+			return true
+		}
+	}
+	return false
 }
 
 func allStringsEmpty(strList []string) bool {
-    for _, str := range strList {
-        if len(str) != 0 {
-            return false
-        }
-    }
-    return true
+	for _, str := range strList {
+		if len(str) != 0 {
+			return false
+		}
+	}
+	return true
 }
 
-func (m Model) Validate(){
+func (m Model) Validate() {
 	//if empty conditions
-	m.errors[0]=""
-	m.errors[1]=""
+	m.errors[0] = ""
+	m.errors[1] = ""
 	//validate name and code
 	name := ToHyphenName(m.inputs[0].Value())
 	if contained(name, m.existing_names) {
 		m.errors[0] = "• Name already in use"
-	} 
+	}
 	code := strings.ToUpper(m.inputs[1].Value())
 	if contained(code, m.existing_codes) {
 		m.errors[1] = "• Code already in use"
 	}
-}	
+}
 
+func (m Model) Submit() {
+	folder_name := ToFolderName(m.inputs[0].Value())
+	code := strings.ToUpper(m.inputs[1].Value())
+	sub := Submission{
+		project_name: ToDunderName(m.inputs[0].Value()),
+		folder_name:  code + "_" + folder_name,
+		repo_name:    ToHyphenName(m.inputs[0].Value()),
+		description:  m.summary.Value(),
+		git:          m.confirmation,
+	}
+}
 
-func (m Model) forceBounds()(tea.Model, tea.Cmd){
+func (m Model) forceBounds() (tea.Model, tea.Cmd) {
 	if m.index > len(m.inputs) {
 		m.index = 0
 	} else if m.index < 0 {
@@ -251,12 +331,12 @@ func (m Model) forceBounds()(tea.Model, tea.Cmd){
 
 	//handle summary
 	var cmd tea.Cmd
-	if m.index == len(m.inputs){
+	if m.index == len(m.inputs) {
 		cmd = m.summary.Focus()
 	} else {
 		m.summary.Blur()
 	}
-	cmds = append(cmds,cmd)
+	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
 }
@@ -269,14 +349,13 @@ func (m *Model) updateInputs(msg tea.Msg) tea.Cmd {
 	for i := range m.inputs {
 		m.inputs[i], cmds[i] = m.inputs[i].Update(msg)
 	}
-	
+
 	//update summary
 	var cmd tea.Cmd
 	m.summary, cmd = m.summary.Update(msg)
-	cmds = append(cmds,cmd)
+	cmds = append(cmds, cmd)
 	return tea.Batch(cmds...)
 }
-
 
 func (m Model) helpView() string {
 	return m.Styles.HelpStyle.Render(m.Help.View(m))
@@ -285,35 +364,54 @@ func (m Model) helpView() string {
 // FullHelp returns bindings to show the full help view. It's part of the
 // help.KeyMap interface.
 func (m Model) FullHelp() [][]key.Binding {
-	kb := [][]key.Binding{{
-		m.KeyMap.Next,
-		m.KeyMap.Prev,
-		m.KeyMap.Submit,
-		m.KeyMap.Quit,
-		m.KeyMap.CloseFullHelp,
-	}}
+	switch m.status {
+	case "done":
+		kb := [][]key.Binding{{
+			m.KeyMap.Toggle,
+			m.KeyMap.Enter,
+			m.KeyMap.Quit,
+			m.KeyMap.CloseFullHelp,
+		}}
+		return kb
 
-	return kb
+	default:
+		kb := [][]key.Binding{{
+			m.KeyMap.Next,
+			m.KeyMap.Prev,
+			m.KeyMap.Submit,
+			m.KeyMap.Quit,
+			m.KeyMap.CloseFullHelp,
+		}}
+		return kb
+	}
 }
 
 func (m Model) ShortHelp() []key.Binding {
-	kb := []key.Binding{
-		m.KeyMap.Submit,
-		m.KeyMap.Quit,
-		m.KeyMap.ShowFullHelp,
+	switch m.status {
+	case "done":
+		kb := []key.Binding{
+			m.KeyMap.Enter,
+			m.KeyMap.Quit,
+			m.KeyMap.ShowFullHelp,
+		}
+		return kb
+	default:
+		kb := []key.Binding{
+			m.KeyMap.Submit,
+			m.KeyMap.Quit,
+			m.KeyMap.ShowFullHelp,
+		}
+		return kb
 	}
-	return kb
 }
 
-func New(config structs.Config, query string){
+func New(config structs.Config, query string) {
 	//get all projects names
 	codes, folderNames := GetProjects(config.Projects_path, config.Projects_themes)
-	
+
 	//start application
-	p:=tea.NewProgram(newModel(folderNames,codes),tea.WithAltScreen())
-	if _, err :=p.Run();err !=nil{
+	p := tea.NewProgram(newModel(folderNames, codes), tea.WithAltScreen())
+	if _, err := p.Run(); err != nil {
 		fmt.Println(err)
 	}
 }
-
-

@@ -9,7 +9,6 @@ import (
 	structs "github.com/antonio-leitao/nau/lib/structs"
 )
 
-
 func UpdateConfigField(config *structs.Config, field string, value interface{}) error {
 	v := reflect.ValueOf(config).Elem()
 	fieldValue := v.FieldByName(field)
