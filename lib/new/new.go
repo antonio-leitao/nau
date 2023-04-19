@@ -72,7 +72,7 @@ type Model struct {
 	inputs     []textinput.Model
 	summary textarea.Model
 	errors []string
-	done bool
+	status string
 	existing_codes []string
 	existing_names []string
 }
@@ -87,7 +87,7 @@ func newModel(existing_names []string, existing_codes []string)Model{
 		inputs: make([]textinput.Model, 2),
 		summary: textarea.New(),
 		errors: []string{"",""},
-		done: false,
+		status: "info",
 		existing_codes: existing_codes,
 		existing_names: existing_names,
 
@@ -98,7 +98,7 @@ func newModel(existing_names []string, existing_codes []string)Model{
 	for i := range m.inputs{
 		t = textinput.New()
 		t.CursorStyle = m.Styles.FocusedStyle
-		t.CharLimit = 32
+		t.CharLimit = 24
 
 		switch i {
 		case 0:
@@ -116,9 +116,9 @@ func newModel(existing_names []string, existing_codes []string)Model{
 	//style of the text area
 	m.summary.Placeholder="Describe you project"
 	m.summary.ShowLineNumbers = false
-	m.summary.SetWidth(32)
-	m.summary.SetHeight(5)
-	m.summary.CharLimit = 120
+	m.summary.SetWidth(56)
+	m.summary.SetHeight(6)
+	m.summary.CharLimit = 256
 	return m
 }
 
@@ -146,9 +146,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		//submission
 		case key.Matches(msg,  m.KeyMap.Submit):
 			//validate
-			m.Validate()
 			if allStringsEmpty(m.errors){
-				m.done = true
+				m.status = "done"
 				//submit and quit
 			}
 				
@@ -166,21 +165,32 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View()string{
-	if m.done {
+	switch m.status {
+	case "info":
+		var sections []string
+		//make styles here
+		sections=append(sections,m.Styles.Title.Render("Name and ID"))
+		for i := range m.inputs {
+			sections=append(
+				sections,
+				lipgloss.JoinHorizontal(
+					lipgloss.Left,
+					lipgloss.NewStyle().Width(24).Render(m.inputs[i].View()),
+					m.Styles.WarningStyle.Render(m.errors[i]),
+				),
+			)
+		}
+		sections=append(sections,m.Styles.Title.Render("Description"))
+		sections=append(sections,m.summary.View())
+		if m.showHelp {
+			sections = append(sections, m.helpView())
+		}
+		return lipgloss.JoinVertical(lipgloss.Left, sections...)
+
+	case "done":
 		return "Show some progress or something"
 	}
-	var sections []string
-	//make styles here
-	sections=append(sections,"\nName and ID"+m.errors[0]+m.errors[1])
-	for i := range m.inputs {
-		sections=append(sections,m.inputs[i].View())
-	}
-	sections=append(sections,"\nDescription")
-	sections=append(sections,m.summary.View())
-	if m.showHelp {
-		sections = append(sections, m.helpView())
-	}
-	return lipgloss.JoinVertical(lipgloss.Left, sections...)
+	return "Error"
 }
 
 func contained(str string, slice []string) bool {
@@ -203,15 +213,16 @@ func allStringsEmpty(strList []string) bool {
 
 func (m Model) Validate(){
 	//if empty conditions
-	//m.errors = []string{"",""}
+	m.errors[0]=""
+	m.errors[1]=""
 	//validate name and code
 	name := ToHyphenName(m.inputs[0].Value())
 	if contained(name, m.existing_names) {
-		m.errors[0] = "Name already in use"
+		m.errors[0] = "• Name already in use"
 	} 
 	code := strings.ToUpper(m.inputs[1].Value())
 	if contained(code, m.existing_codes) {
-		m.errors[1] = "Code already in use"
+		m.errors[1] = "• Code already in use"
 	}
 }	
 
@@ -251,6 +262,7 @@ func (m Model) forceBounds()(tea.Model, tea.Cmd){
 }
 
 func (m *Model) updateInputs(msg tea.Msg) tea.Cmd {
+	m.Validate()
 	cmds := make([]tea.Cmd, len(m.inputs))
 	// Only text inputs with Focus() set will respond, so it's safe to simply
 	// update all of them here without any further logic.
