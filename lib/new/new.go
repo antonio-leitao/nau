@@ -84,11 +84,12 @@ type Model struct {
 	summary  textarea.Model
 	errors   []string
 	status   string
+	template string
 	//git confirmatio
 	confirmation bool
 }
 
-func newModel(base_color string, existing_names []string, existing_codes []string) Model {
+func newModel(base_color string, initial_status string, template string, existing_names []string, existing_codes []string) Model {
 	m := Model{
 		showHelp:       true,
 		KeyMap:         DefaultKeyMap,
@@ -98,7 +99,8 @@ func newModel(base_color string, existing_names []string, existing_codes []strin
 		inputs:         make([]textinput.Model, 2),
 		summary:        textarea.New(),
 		errors:         []string{"", ""},
-		status:         "info",
+		status:         initial_status,
+		template:       template,
 		existing_codes: existing_codes,
 		existing_names: existing_names,
 		confirmation:   true,
@@ -296,10 +298,10 @@ func (m Model) Validate() {
 		m.errors[1] = m.Styles.ErrorStyle.Render("• Code already in use")
 	}
 
-	if len(m.inputs[0].Value())==0{
+	if len(m.inputs[0].Value()) == 0 {
 		m.errors[0] = m.Styles.WarningStyle.Render("• Name cannot be empty")
 	}
-	if len(m.inputs[1].Value())==0{
+	if len(m.inputs[1].Value()) == 0 {
 		m.errors[1] = m.Styles.WarningStyle.Render("• Code cannot be empty")
 	}
 }
@@ -415,18 +417,31 @@ func (m Model) ShortHelp() []key.Binding {
 }
 
 func New(config utils.Config, query string) {
+	//where do we start?
+	initial_state, template, base_color := HandleArgs(config, query)
 	//get all projects names
 	projects, err := utils.GetProjects(config)
 	if err != nil {
 		fmt.Println(err)
 	}
+	//separate them
 	var codes, repoNames []string
 	for _, project := range projects {
 		codes = append(codes, project.Code)
 		repoNames = append(repoNames, project.Repo_name)
 	}
+
 	//start application
-	p := tea.NewProgram(newModel(config.Base_color,repoNames, codes), tea.WithAltScreen())
+	p := tea.NewProgram(
+		newModel(
+			base_color,
+			initial_state,
+			template,
+			repoNames,
+			codes,
+		),
+		tea.WithAltScreen(),
+	)
 	if _, err := p.Run(); err != nil {
 		fmt.Println(err)
 	}

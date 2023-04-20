@@ -56,9 +56,10 @@ func main() {
 		os.Exit(0)
 	case "new":
 		if len(os.Args) < 3 {
-			fmt.Printf("TODO: list and choose all themes")
-			os.Exit(1)
+			new.New(config, "")
+			os.Exit(0)
 		}
+
 		new.New(config, os.Args[2])
 		os.Exit(0)
 

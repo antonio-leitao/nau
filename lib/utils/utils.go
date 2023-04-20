@@ -137,6 +137,30 @@ func GetProjects(config Config) ([]Project, error) {
 	return projectNames, nil
 }
 
+// func DimColor(hexColor string, factor float64) (string, error) {
+//     // Parse the hexadecimal color string
+//     c, err := colorful.Hex(hexColor)
+//     if err != nil {
+//         return "", err
+//     }
+
+//     // Convert the color to the HSL color space
+//     h, s, l := c.Hsl()
+
+//     // Dim the color by reducing the saturation and increasing the lightness
+//     s *= factor
+//     l += (1 - l) * (1 - factor)
+
+//     // Convert the dimmed color back to the RGB color space
+//     dimmed := colorful.Hsl(h, s, l)
+//     r, g, b := dimmed.RGB255()
+
+//     // Format the RGB values as a hexadecimal color string
+//     dimmedHex := fmt.Sprintf("#%02x%02x%02x", r, g, b)
+
+//     return dimmedHex, nil
+// }
+
 func contains(color_map map[string]string, key string) bool {
 	_, ok := color_map[key]
 	if ok {
@@ -158,7 +182,7 @@ func validEntry(entry os.DirEntry) bool {
 // get all themes
 func LoadTemplatesColorMap(dirPath string) (map[string]string, error) {
 	// Compile a regular expression to match the folder names
-	re := regexp.MustCompile(`^(\w+)_#(\w{6})$`)
+	re := regexp.MustCompile(`^(\w+)_(#\w{6})$`)
 
 	// Initialize a map to store the Name and color
 	nameColorMap := make(map[string]string)
