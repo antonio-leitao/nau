@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	structs "github.com/antonio-leitao/nau/lib/structs"
+	utils "github.com/antonio-leitao/nau/lib/utils"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textarea"
@@ -124,12 +124,14 @@ func newModel(existing_names []string, existing_codes []string) Model {
 
 		m.inputs[i] = t
 	}
-	//style of the text area
+	//static props of the text area
 	m.summary.Placeholder = "Describe you project"
 	m.summary.ShowLineNumbers = false
-	m.summary.SetWidth(48)
+	m.summary.SetWidth(52)
 	m.summary.SetHeight(6)
-	m.summary.CharLimit = 256
+	m.summary.CharLimit = 328
+	//style of the text area
+	m.summary.FocusedStyle.CursorLine = m.Styles.NoStyle
 	return m
 }
 
@@ -285,7 +287,7 @@ func (m Model) Validate() {
 	m.errors[0] = ""
 	m.errors[1] = ""
 	//validate name and code
-	name := ToHyphenName(m.inputs[0].Value())
+	name := utils.ToHyphenName(m.inputs[0].Value())
 	if contained(name, m.existing_names) {
 		m.errors[0] = "• Name already in use"
 	}
@@ -295,17 +297,17 @@ func (m Model) Validate() {
 	}
 }
 
-func (m Model) Submit() {
-	folder_name := ToFolderName(m.inputs[0].Value())
-	code := strings.ToUpper(m.inputs[1].Value())
-	sub := Submission{
-		project_name: ToDunderName(m.inputs[0].Value()),
-		folder_name:  code + "_" + folder_name,
-		repo_name:    ToHyphenName(m.inputs[0].Value()),
-		description:  m.summary.Value(),
-		git:          m.confirmation,
-	}
-}
+// func (m Model) Submit() {
+// 	folder_name := ToFolderName(m.inputs[0].Value())
+// 	code := strings.ToUpper(m.inputs[1].Value())
+// 	sub := Submission{
+// 		project_name: ToDunderName(m.inputs[0].Value()),
+// 		folder_name:  code + "_" + folder_name,
+// 		repo_name:    ToHyphenName(m.inputs[0].Value()),
+// 		description:  m.summary.Value(),
+// 		git:          m.confirmation,
+// 	}
+// }
 
 func (m Model) forceBounds() (tea.Model, tea.Cmd) {
 	if m.index > len(m.inputs) {
@@ -405,12 +407,11 @@ func (m Model) ShortHelp() []key.Binding {
 	}
 }
 
-func New(config structs.Config, query string) {
+func New(config utils.Config, query string) {
 	//get all projects names
-	codes, folderNames := GetProjects(config.Projects_path, config.Projects_themes)
-
+	codes, repoNames := GetCodesAndNames(config.Projects_path, config.Projects_themes)
 	//start application
-	p := tea.NewProgram(newModel(folderNames, codes), tea.WithAltScreen())
+	p := tea.NewProgram(newModel(repoNames, codes), tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Println(err)
 	}

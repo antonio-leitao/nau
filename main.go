@@ -7,18 +7,19 @@ import (
 
 	"github.com/BurntSushi/toml"
 
+	archive "github.com/antonio-leitao/nau/lib/archive"
 	configure "github.com/antonio-leitao/nau/lib/configure"
 	new "github.com/antonio-leitao/nau/lib/new"
 	open "github.com/antonio-leitao/nau/lib/open"
-	structs "github.com/antonio-leitao/nau/lib/structs"
+	utils "github.com/antonio-leitao/nau/lib/utils"
 )
 
 // function to load the config stuff
-func loadConfig(path string) (structs.Config, error) {
-	var config structs.Config
+func loadConfig(path string) (utils.Config, error) {
+	var config utils.Config
 	_, err := toml.DecodeFile(path, &config)
 	if err != nil {
-		return structs.Config{}, err
+		return utils.Config{}, err
 	}
 	return config, nil
 }
@@ -50,11 +51,19 @@ func main() {
 		os.Exit(0)
 	case "new":
 		if len(os.Args) < 3 {
-			fmt.Printf("TODO: list and choose all projects")
-			os.Exit(0)
+			fmt.Printf("TODO: list and choose all themes")
+			os.Exit(1)
 		}
 		new.New(config, os.Args[2])
-		os.Exit(1)
+		os.Exit(0)
+
+	case "archive":
+		if len(os.Args) < 3 {
+			fmt.Printf("TODO: list and choose all projects")
+			os.Exit(1)
+		}
+		archive.Archive(config, os.Args[2])
+		os.Exit(0)
 	case "config":
 		switch len(os.Args) {
 		case 2:

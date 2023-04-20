@@ -6,10 +6,10 @@ import (
 	"reflect"
 
 	"github.com/BurntSushi/toml"
-	structs "github.com/antonio-leitao/nau/lib/structs"
+	utils "github.com/antonio-leitao/nau/lib/utils"
 )
 
-func UpdateConfigField(config *structs.Config, field string, value interface{}) error {
+func UpdateConfigField(config *utils.Config, field string, value interface{}) error {
 	v := reflect.ValueOf(config).Elem()
 	fieldValue := v.FieldByName(field)
 
