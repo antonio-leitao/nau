@@ -2,6 +2,7 @@ name = "NAU"
 version = 0
 author = "Antonio Leitao"
 url =  "antonio-leitao.github.io"
+base_color = "#814584" #fandango
 projects = ["Rust","Python","Go","Web"]
 projects_path = "/Users/antonio/Documents/Projects"
 templates_path = "/Users/antonio/Documents/Templates"

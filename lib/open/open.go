@@ -19,10 +19,8 @@ func (p Projects) Len() int {
 	return len(p)
 }
 
-
-
 func Open(config utils.Config, query string) {
-	projectList, _ := utils.GetProjects(config.Projects_path, config.Projects_themes)
+	projectList, _ := utils.GetProjects(config)
 	projects := Projects(projectList)
 	candidates := fuzzy.FindFrom(query, projects)
 

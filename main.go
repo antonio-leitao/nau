@@ -21,6 +21,12 @@ func loadConfig(path string) (utils.Config, error) {
 	if err != nil {
 		return utils.Config{}, err
 	}
+	//get templates
+	color_map, err := utils.LoadTemplatesColorMap(config.Templates_path)
+	if err != nil {
+		return utils.Config{}, err
+	}
+	config.Templates = color_map
 	return config, nil
 }
 
@@ -31,7 +37,6 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-
 	// Parse the command-line arguments
 	if len(os.Args) < 2 {
 		//home.Home()

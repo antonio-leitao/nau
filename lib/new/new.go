@@ -88,11 +88,11 @@ type Model struct {
 	confirmation bool
 }
 
-func newModel(existing_names []string, existing_codes []string) Model {
+func newModel(base_color string, existing_names []string, existing_codes []string) Model {
 	m := Model{
 		showHelp:       true,
 		KeyMap:         DefaultKeyMap,
-		Styles:         DefaultStyles(),
+		Styles:         DefaultStyles(base_color),
 		Help:           help.New(),
 		index:          0,
 		inputs:         make([]textinput.Model, 2),
@@ -225,7 +225,7 @@ func (m Model) View() string {
 				lipgloss.JoinHorizontal(
 					lipgloss.Left,
 					lipgloss.NewStyle().Width(24).Render(m.inputs[i].View()),
-					m.Styles.WarningStyle.Render(m.errors[i]),
+					m.errors[i],
 				),
 			)
 		}
@@ -289,11 +289,18 @@ func (m Model) Validate() {
 	//validate name and code
 	name := utils.ToHyphenName(m.inputs[0].Value())
 	if contained(name, m.existing_names) {
-		m.errors[0] = "• Name already in use"
+		m.errors[0] = m.Styles.ErrorStyle.Render("• Name already in use")
 	}
 	code := strings.ToUpper(m.inputs[1].Value())
 	if contained(code, m.existing_codes) {
-		m.errors[1] = "• Code already in use"
+		m.errors[1] = m.Styles.ErrorStyle.Render("• Code already in use")
+	}
+
+	if len(m.inputs[0].Value())==0{
+		m.errors[0] = m.Styles.WarningStyle.Render("• Name cannot be empty")
+	}
+	if len(m.inputs[1].Value())==0{
+		m.errors[1] = m.Styles.WarningStyle.Render("• Code cannot be empty")
 	}
 }
 
@@ -409,9 +416,17 @@ func (m Model) ShortHelp() []key.Binding {
 
 func New(config utils.Config, query string) {
 	//get all projects names
-	codes, repoNames := GetCodesAndNames(config.Projects_path, config.Projects_themes)
+	projects, err := utils.GetProjects(config)
+	if err != nil {
+		fmt.Println(err)
+	}
+	var codes, repoNames []string
+	for _, project := range projects {
+		codes = append(codes, project.Code)
+		repoNames = append(repoNames, project.Repo_name)
+	}
 	//start application
-	p := tea.NewProgram(newModel(repoNames, codes), tea.WithAltScreen())
+	p := tea.NewProgram(newModel(config.Base_color,repoNames, codes), tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Println(err)
 	}
