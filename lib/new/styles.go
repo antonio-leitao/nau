@@ -32,7 +32,7 @@ func DefaultStyles(base_color string) (s Styles) {
 	subduedColor := lipgloss.AdaptiveColor{Light: "#9B9B9B", Dark: "#5C5C5C"}
 
 	s.App = lipgloss.NewStyle().Width(52).Align(lipgloss.Center)
-	s.Header = lipgloss.NewStyle().Margin(0, 0, 1, 0)
+	s.Header = lipgloss.NewStyle().Margin(1, 0, 0, 0)
 	title_text := "#ffffd7" //230
 	if !IsSufficientContrast(title_text, base_color) {
 		title_text = "235"

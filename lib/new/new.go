@@ -317,7 +317,7 @@ func (m Model) UpdateWaiting(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	header := m.Styles.PromptStyle.Render(
+	header := m.Styles.Header.Render(
 		lipgloss.JoinVertical(
 			lipgloss.Center,
 			"New Project",

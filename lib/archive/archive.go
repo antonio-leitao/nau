@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	utils "github.com/antonio-leitao/nau/lib/utils"
@@ -97,9 +98,26 @@ func compress(src string, buf io.Writer) error {
 	return nil
 }
 
+func runMakeArchive(targetDir string) error {
+	// Change to the target directory
+	err := os.Chdir(targetDir)
+	if err != nil {
+		return err
+	}
+	// Run the "make archive" command
+	cmd := exec.Command("make", "archive")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("make archive failed: %s", output)
+	}
+
+	return nil
+}
+
 func archiveProject(destDir, srcDir string) {
-	//srcDir := "./folderToCompress"
-	//destDir := "./archive"
+	//before archiving run the make archive target on that directory.
+	_ = runMakeArchive(srcDir)
+	//archive the project
 	err := compressAndMove(srcDir, destDir)
 	if err != nil {
 		panic(err)
