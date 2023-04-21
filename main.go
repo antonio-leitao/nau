@@ -59,7 +59,6 @@ func main() {
 			new.New(config, "")
 			os.Exit(0)
 		}
-
 		new.New(config, os.Args[2])
 		os.Exit(0)
 
