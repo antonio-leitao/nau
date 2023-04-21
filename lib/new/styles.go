@@ -8,6 +8,8 @@ import (
 )
 
 type Styles struct {
+	Header       lipgloss.Style
+	App          lipgloss.Style
 	Title        lipgloss.Style
 	HelpStyle    lipgloss.Style
 	FocusedStyle lipgloss.Style
@@ -15,6 +17,10 @@ type Styles struct {
 	ErrorStyle   lipgloss.Style
 	BlurredStyle lipgloss.Style
 	NoStyle      lipgloss.Style
+
+	//choose
+	SelectedTemplate   lipgloss.Style
+	UnselectedTemplate lipgloss.Style
 	//confirmation
 	PromptStyle     lipgloss.Style
 	SelectedStyle   lipgloss.Style
@@ -25,6 +31,8 @@ func DefaultStyles(base_color string) (s Styles) {
 	verySubduedColor := lipgloss.AdaptiveColor{Light: "#DDDADA", Dark: "#3C3C3C"}
 	subduedColor := lipgloss.AdaptiveColor{Light: "#9B9B9B", Dark: "#5C5C5C"}
 
+	s.App = lipgloss.NewStyle().Width(52).Align(lipgloss.Center)
+	s.Header = lipgloss.NewStyle().Margin(0, 0, 1, 0)
 	title_text := "#ffffd7" //230
 	if !IsSufficientContrast(title_text, base_color) {
 		title_text = "235"
@@ -42,11 +50,15 @@ func DefaultStyles(base_color string) (s Styles) {
 	s.FocusedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("230"))
 	s.BlurredStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("230"))
 	s.NoStyle = lipgloss.NewStyle()
-	s.WarningStyle = lipgloss.NewStyle().Foreground(verySubduedColor) //yellow
-	s.ErrorStyle = lipgloss.NewStyle().Foreground(subduedColor)       //red
+	s.WarningStyle = lipgloss.NewStyle().Foreground(verySubduedColor)
+	s.ErrorStyle = lipgloss.NewStyle().Foreground(subduedColor)
 	s.PromptStyle = lipgloss.NewStyle().Margin(5, 0, 0, 0)
-	s.SelectedStyle = lipgloss.NewStyle().Background(lipgloss.Color(base_color)).Foreground(lipgloss.Color("230")).Padding(0, 3).Margin(1, 1)
-	s.UnselectedStyle = lipgloss.NewStyle().Background(lipgloss.Color("235")).Foreground(lipgloss.Color("254")).Padding(0, 3).Margin(1, 1)
+
+	s.SelectedTemplate = lipgloss.NewStyle().Width(15).Align(lipgloss.Center).Padding(0, 3).Margin(1, 0, 0, 0)
+	s.UnselectedTemplate = lipgloss.NewStyle().Width(15).Background(lipgloss.Color("235")).Align(lipgloss.Center).Padding(0, 3).Margin(1, 0, 0, 0)
+
+	s.SelectedStyle = lipgloss.NewStyle().Background(lipgloss.Color(base_color)).Foreground(lipgloss.Color(title_text)).Align(lipgloss.Center).Padding(0, 3).Margin(1, 1)
+	s.UnselectedStyle = lipgloss.NewStyle().Background(lipgloss.Color("235")).Foreground(lipgloss.Color("254")).Align(lipgloss.Center).Padding(0, 3).Margin(1, 1)
 	return s
 }
 
@@ -111,6 +123,5 @@ func calcContrastRatio(l1, l2 float64) float64 {
 	if l1 < l2 {
 		l1, l2 = l2, l1
 	}
-
 	return (l1 + 0.05) / (l2 + 0.05)
 }

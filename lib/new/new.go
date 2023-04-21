@@ -24,6 +24,8 @@ type Submission struct {
 type KeyMap struct {
 	Next   key.Binding
 	Prev   key.Binding
+	Up     key.Binding
+	Down   key.Binding
 	Submit key.Binding
 	Quit   key.Binding
 	Enter  key.Binding
@@ -41,6 +43,15 @@ var DefaultKeyMap = KeyMap{
 	Prev: key.NewBinding(
 		key.WithKeys("shift+tab"),
 		key.WithHelp("shift+tab", "prev"),
+	),
+	// Browsing.
+	Up: key.NewBinding(
+		key.WithKeys("up", "k"),
+		key.WithHelp("↑/k", "up"),
+	),
+	Down: key.NewBinding(
+		key.WithKeys("down", "j"),
+		key.WithHelp("↓/j", "down"),
 	),
 	Submit: key.NewBinding(
 		key.WithKeys("ctrl+d"),
@@ -75,35 +86,51 @@ type Model struct {
 	existing_codes []string
 	existing_names []string
 	//basic info
-	showHelp bool
-	KeyMap   KeyMap
-	Styles   Styles
-	Help     help.Model
-	index    int
-	inputs   []textinput.Model
-	summary  textarea.Model
-	errors   []string
-	status   string
-	template string
+	showHelp        bool
+	KeyMap          KeyMap
+	Styles          Styles
+	Help            help.Model
+	index           int
+	inputs          []textinput.Model
+	summary         textarea.Model
+	errors          []string
+	status          string
+	template        string
+	base_color      string
+	templates       []string
+	template_colors []string
+	cursor          int
 	//git confirmatio
 	confirmation bool
 }
 
-func newModel(base_color string, initial_status string, template string, existing_names []string, existing_codes []string) Model {
+func newModel(
+	base_color string,
+	initial_status string,
+	template string,
+	templates []string,
+	template_colors []string,
+	existing_names []string,
+	existing_codes []string,
+) Model {
 	m := Model{
-		showHelp:       true,
-		KeyMap:         DefaultKeyMap,
-		Styles:         DefaultStyles(base_color),
-		Help:           help.New(),
-		index:          0,
-		inputs:         make([]textinput.Model, 2),
-		summary:        textarea.New(),
-		errors:         []string{"", ""},
-		status:         initial_status,
-		template:       template,
-		existing_codes: existing_codes,
-		existing_names: existing_names,
-		confirmation:   true,
+		showHelp:        true,
+		KeyMap:          DefaultKeyMap,
+		Styles:          DefaultStyles(base_color),
+		Help:            help.New(),
+		index:           0,
+		inputs:          make([]textinput.Model, 2),
+		summary:         textarea.New(),
+		errors:          []string{"", ""},
+		status:          initial_status,
+		template:        template,
+		base_color:      base_color,
+		templates:       templates,
+		template_colors: template_colors,
+		existing_codes:  existing_codes,
+		existing_names:  existing_names,
+		cursor:          0,
+		confirmation:    true,
 	}
 
 	//style of the inputs
@@ -111,7 +138,7 @@ func newModel(base_color string, initial_status string, template string, existin
 	for i := range m.inputs {
 		t = textinput.New()
 		t.CursorStyle = m.Styles.FocusedStyle
-		t.CharLimit = 24
+		t.CharLimit = 20
 
 		switch i {
 		case 0:
@@ -143,11 +170,58 @@ func (m Model) Init() tea.Cmd {
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m.status {
+	case "choose":
+		return m.UpdateChoose(msg)
 	case "done":
 		return m.UpdateDone(msg)
 	default:
 		return m.UpdateInfo(msg)
 	}
+}
+
+func (m Model) UpdateChoose(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+
+		//next field
+		case key.Matches(msg, m.KeyMap.Up):
+			m.cursor--
+			if m.cursor > len(m.templates) {
+				m.cursor = 0
+			} else if m.cursor < 0 {
+				m.cursor = len(m.templates)
+			}
+			return m, nil
+
+		case key.Matches(msg, m.KeyMap.Down):
+			m.cursor++
+			if m.cursor > len(m.templates) {
+				m.cursor = 0
+			} else if m.cursor < 0 {
+				m.cursor = len(m.templates)
+			}
+			return m, nil
+
+		//submission
+		case key.Matches(msg, m.KeyMap.Enter):
+			m.template = m.templates[m.cursor]
+			m.base_color = m.template_colors[m.cursor]
+			//recompute styles based on selection
+			m.Styles = DefaultStyles(m.base_color)
+			if allStringsEmpty(m.errors) {
+				m.status = "info"
+			}
+
+		case key.Matches(msg, m.KeyMap.Quit):
+			return m, tea.Quit
+		case key.Matches(msg, m.KeyMap.ShowFullHelp):
+			fallthrough
+		case key.Matches(msg, m.KeyMap.CloseFullHelp):
+			m.Help.ShowAll = !m.Help.ShowAll
+		}
+	}
+	return m, nil
 }
 
 func (m Model) UpdateInfo(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -216,32 +290,72 @@ func (m Model) UpdateDone(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-	switch m.status {
-	case "info":
-		var sections []string
-		//make styles here
-		sections = append(sections, m.Styles.Title.Render("Name and ID"))
-		for i := range m.inputs {
-			sections = append(
-				sections,
-				lipgloss.JoinHorizontal(
-					lipgloss.Left,
-					lipgloss.NewStyle().Width(24).Render(m.inputs[i].View()),
-					m.errors[i],
-				),
-			)
-		}
-		sections = append(sections, m.Styles.Title.Render("Description"))
-		sections = append(sections, m.summary.View())
-		if m.showHelp {
-			sections = append(sections, m.helpView())
-		}
-		return lipgloss.JoinVertical(lipgloss.Left, sections...)
+	header := m.Styles.PromptStyle.Render(
+		lipgloss.JoinVertical(
+			lipgloss.Center,
+			"New Project",
+			m.Styles.ErrorStyle.Render("Start a new project from a template"),
+		),
+	)
 
+	switch m.status {
+	case "choose":
+		return lipgloss.JoinVertical(lipgloss.Center, header, m.Styles.App.Render(m.ChooseView()))
+	case "info":
+		return lipgloss.JoinVertical(lipgloss.Center, header, m.Styles.App.Render(m.InfoView()))
 	case "done":
-		return m.ConfirmView()
+		return lipgloss.JoinVertical(lipgloss.Center, header, m.Styles.App.Render(m.ConfirmView()))
 	}
 	return "Error"
+}
+
+func (m Model) ChooseView() string {
+	var sections []string
+	var choice string
+	for i, lang := range m.templates {
+		title_text := "#ffffd7" //230
+		if m.cursor == i {
+			color := m.template_colors[i]
+			if !IsSufficientContrast(title_text, color) {
+				title_text = "235"
+			}
+			choice = m.Styles.SelectedTemplate.
+				Background(lipgloss.Color(color)).
+				Foreground(lipgloss.Color(title_text)).
+				Render(lang)
+		} else {
+			choice = m.Styles.UnselectedTemplate.
+				Render(lang)
+		}
+		sections = append(sections, choice)
+	}
+
+	if m.showHelp {
+		sections = append(sections, m.helpView())
+	}
+	return lipgloss.JoinVertical(lipgloss.Center, sections...)
+}
+
+func (m Model) InfoView() string {
+	var sections []string
+	//make styles here
+	sections = append(sections, m.Styles.Title.Render("Name and ID"))
+	for i := range m.inputs {
+		sections = append(
+			sections,
+			lipgloss.JoinHorizontal(
+				lipgloss.Left,
+				lipgloss.NewStyle().Width(25).Render(m.inputs[i].View()),
+				m.errors[i],
+			),
+		)
+	}
+	sections = append(sections, m.Styles.Title.Render("Description"))
+	sections = append(sections, m.summary.View())
+	if m.showHelp {
+		sections = append(sections, m.helpView())
+	}
+	return lipgloss.JoinVertical(lipgloss.Left, sections...)
 }
 
 func (m Model) ConfirmView() string {
@@ -301,8 +415,8 @@ func (m Model) Validate() {
 	if len(m.inputs[0].Value()) == 0 {
 		m.errors[0] = m.Styles.WarningStyle.Render("• Name cannot be empty")
 	}
-	if len(m.inputs[1].Value()) == 0 {
-		m.errors[1] = m.Styles.WarningStyle.Render("• Code cannot be empty")
+	if len(m.inputs[1].Value()) < 3 {
+		m.errors[1] = m.Styles.WarningStyle.Render("• Code needs three letters")
 	}
 }
 
@@ -376,6 +490,16 @@ func (m Model) helpView() string {
 // help.KeyMap interface.
 func (m Model) FullHelp() [][]key.Binding {
 	switch m.status {
+	case "choose":
+		kb := [][]key.Binding{{
+			m.KeyMap.Up,
+			m.KeyMap.Down,
+			m.KeyMap.Enter,
+			m.KeyMap.Quit,
+			m.KeyMap.CloseFullHelp,
+		}}
+		return kb
+
 	case "done":
 		kb := [][]key.Binding{{
 			m.KeyMap.Toggle,
@@ -399,6 +523,13 @@ func (m Model) FullHelp() [][]key.Binding {
 
 func (m Model) ShortHelp() []key.Binding {
 	switch m.status {
+	case "choose":
+		kb := []key.Binding{
+			m.KeyMap.Enter,
+			m.KeyMap.Quit,
+			m.KeyMap.CloseFullHelp,
+		}
+		return kb
 	case "done":
 		kb := []key.Binding{
 			m.KeyMap.Enter,
@@ -431,12 +562,21 @@ func New(config utils.Config, query string) {
 		repoNames = append(repoNames, project.Repo_name)
 	}
 
+	templates := []string{"Default"}
+	template_colors := []string{base_color}
+	for lang, color := range config.Templates {
+		templates = append(templates, lang)
+		template_colors = append(template_colors, color)
+	}
+
 	//start application
 	p := tea.NewProgram(
 		newModel(
 			base_color,
 			initial_state,
 			template,
+			templates,
+			template_colors,
 			repoNames,
 			codes,
 		),
