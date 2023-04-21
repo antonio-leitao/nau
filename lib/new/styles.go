@@ -39,7 +39,7 @@ func DefaultStyles(base_color string) (s Styles) {
 	}
 
 	s.Title = lipgloss.NewStyle().
-		Margin(2, 1, 1, 0).
+		Margin(1, 1, 1, 0).
 		Padding(0, 1, 0, 1).
 		Background(lipgloss.Color(base_color)).
 		Foreground(lipgloss.Color(title_text))

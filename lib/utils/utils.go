@@ -217,8 +217,10 @@ func LoadTemplatesColorMap(dirPath string) (map[string]string, error) {
 type Config struct {
 	Name           string `toml:"name"`
 	Version        int    `toml:"version"`
-	Author         string `toml:"author"`
 	Url            string `toml:"url"`
+	Author         string `toml:"author"`
+	Email          string `toml:"email"`
+	Remote         string `toml:"remote"`
 	Base_color     string `toml:"base_color"`
 	Projects_path  string `toml:"projects_path"`
 	Templates_path string `toml:"templates_path"`
@@ -229,8 +231,10 @@ type Config struct {
 func (c Config) Print() {
 	fmt.Println("Name:", c.Name)
 	fmt.Println("Version:", c.Version)
-	fmt.Println("Author:", c.Author)
 	fmt.Println("URL:", c.Url)
+	fmt.Println("Author:", c.Author)
+	fmt.Println("Email:", c.Email)
+	fmt.Println("Remote:", c.Remote)
 
 	keys := make([]string, 0, len(c.Templates))
 	for key := range c.Templates {

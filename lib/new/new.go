@@ -7,6 +7,7 @@ import (
 	utils "github.com/antonio-leitao/nau/lib/utils"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -100,8 +101,11 @@ type Model struct {
 	templates       []string
 	template_colors []string
 	cursor          int
+	spinner         spinner.Model
 	//git confirmatio
 	confirmation bool
+	//really just to pass it along
+	config *utils.Config
 }
 
 func newModel(
@@ -112,6 +116,7 @@ func newModel(
 	template_colors []string,
 	existing_names []string,
 	existing_codes []string,
+	config *utils.Config,
 ) Model {
 	m := Model{
 		showHelp:        true,
@@ -130,7 +135,9 @@ func newModel(
 		existing_codes:  existing_codes,
 		existing_names:  existing_names,
 		cursor:          0,
+		spinner:         spinner.New(),
 		confirmation:    true,
+		config:          config,
 	}
 
 	//style of the inputs
@@ -156,24 +163,31 @@ func newModel(
 	//static props of the text area
 	m.summary.Placeholder = "Describe you project"
 	m.summary.ShowLineNumbers = false
-	m.summary.SetWidth(52)
+	m.summary.SetWidth(50)
 	m.summary.SetHeight(6)
-	m.summary.CharLimit = 328
+	m.summary.CharLimit = 500
 	//style of the text area
 	m.summary.FocusedStyle.CursorLine = m.Styles.NoStyle
+
 	return m
 }
 
 func (m Model) Init() tea.Cmd {
-	return nil
+	return m.spinner.Tick
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg.(type) {
+	case Finalize:
+		return m, tea.Quit
+	}
 	switch m.status {
 	case "choose":
 		return m.UpdateChoose(msg)
-	case "done":
-		return m.UpdateDone(msg)
+	case "confirm":
+		return m.UpdateConfirm(msg)
+	case "waiting":
+		return m.UpdateWaiting(msg)
 	default:
 		return m.UpdateInfo(msg)
 	}
@@ -243,12 +257,9 @@ func (m Model) UpdateInfo(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		//submission
 		case key.Matches(msg, m.KeyMap.Submit):
-			//validate
 			if allStringsEmpty(m.errors) {
-				m.status = "done"
-				//submit and quit
+				m.status = "confirm"
 			}
-
 		case key.Matches(msg, m.KeyMap.Quit):
 			return m, tea.Quit
 		case key.Matches(msg, m.KeyMap.ShowFullHelp):
@@ -262,7 +273,7 @@ func (m Model) UpdateInfo(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m Model) UpdateDone(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m Model) UpdateConfirm(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
@@ -271,13 +282,10 @@ func (m Model) UpdateDone(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, m.KeyMap.Toggle):
 			m.confirmation = !m.confirmation
 			return m, nil
-
 		//submission
 		case key.Matches(msg, m.KeyMap.Enter):
-			if allStringsEmpty(m.errors) {
-				m.status = "info"
-			}
-
+			m.status = "waiting"
+			return m, m.Submit
 		case key.Matches(msg, m.KeyMap.Quit):
 			return m, tea.Quit
 		case key.Matches(msg, m.KeyMap.ShowFullHelp):
@@ -285,6 +293,25 @@ func (m Model) UpdateDone(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, m.KeyMap.CloseFullHelp):
 			m.Help.ShowAll = !m.Help.ShowAll
 		}
+	}
+	return m, nil
+}
+
+func (m Model) UpdateWaiting(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, m.KeyMap.Quit):
+			return m, tea.Quit
+		case key.Matches(msg, m.KeyMap.ShowFullHelp):
+			fallthrough
+		case key.Matches(msg, m.KeyMap.CloseFullHelp):
+			m.Help.ShowAll = !m.Help.ShowAll
+		}
+	default:
+		var cmd tea.Cmd
+		m.spinner, cmd = m.spinner.Update(msg)
+		return m, cmd
 	}
 	return m, nil
 }
@@ -303,8 +330,10 @@ func (m Model) View() string {
 		return lipgloss.JoinVertical(lipgloss.Center, header, m.Styles.App.Render(m.ChooseView()))
 	case "info":
 		return lipgloss.JoinVertical(lipgloss.Center, header, m.Styles.App.Render(m.InfoView()))
-	case "done":
+	case "confirm":
 		return lipgloss.JoinVertical(lipgloss.Center, header, m.Styles.App.Render(m.ConfirmView()))
+	case "waiting":
+		return lipgloss.JoinVertical(lipgloss.Center, header, m.Styles.App.Render(m.WaitingView()))
 	}
 	return "Error"
 }
@@ -345,7 +374,7 @@ func (m Model) InfoView() string {
 			sections,
 			lipgloss.JoinHorizontal(
 				lipgloss.Left,
-				lipgloss.NewStyle().Width(25).Render(m.inputs[i].View()),
+				lipgloss.NewStyle().Width(23).Render(m.inputs[i].View()),
 				m.errors[i],
 			),
 		)
@@ -355,7 +384,7 @@ func (m Model) InfoView() string {
 	if m.showHelp {
 		sections = append(sections, m.helpView())
 	}
-	return lipgloss.JoinVertical(lipgloss.Left, sections...)
+	return lipgloss.NewStyle().Padding(0, 1).Render(lipgloss.JoinVertical(lipgloss.Left, sections...))
 }
 
 func (m Model) ConfirmView() string {
@@ -377,6 +406,16 @@ func (m Model) ConfirmView() string {
 		sections = append(sections, m.helpView())
 	}
 
+	return lipgloss.JoinVertical(lipgloss.Center, sections...)
+}
+
+func (m Model) WaitingView() string {
+	var sections []string
+	spinner := fmt.Sprintf("\n\n   %s Creating new project\n\n", m.spinner.View())
+	sections = append(sections, spinner)
+	if m.showHelp {
+		sections = append(sections, m.helpView())
+	}
 	return lipgloss.JoinVertical(lipgloss.Center, sections...)
 }
 
@@ -420,17 +459,21 @@ func (m Model) Validate() {
 	}
 }
 
-// func (m Model) Submit() {
-// 	folder_name := ToFolderName(m.inputs[0].Value())
-// 	code := strings.ToUpper(m.inputs[1].Value())
-// 	sub := Submission{
-// 		project_name: ToDunderName(m.inputs[0].Value()),
-// 		folder_name:  code + "_" + folder_name,
-// 		repo_name:    ToHyphenName(m.inputs[0].Value()),
-// 		description:  m.summary.Value(),
-// 		git:          m.confirmation,
-// 	}
-// }
+type Finalize int
+
+func (m Model) Submit() tea.Msg {
+	folder_name := utils.ToFolderName(m.inputs[0].Value())
+	code := strings.ToUpper(m.inputs[1].Value())
+	sub := Submission{
+		project_name: utils.ToDunderName(m.inputs[0].Value()),
+		folder_name:  code + "_" + folder_name,
+		repo_name:    utils.ToHyphenName(m.inputs[0].Value()),
+		description:  m.summary.Value(),
+		git:          m.confirmation,
+	}
+	createNewProject(sub, m.config, m.template)
+	return Finalize(0)
+}
 
 func (m Model) forceBounds() (tea.Model, tea.Cmd) {
 	if m.index > len(m.inputs) {
@@ -500,10 +543,16 @@ func (m Model) FullHelp() [][]key.Binding {
 		}}
 		return kb
 
-	case "done":
+	case "confirm":
 		kb := [][]key.Binding{{
 			m.KeyMap.Toggle,
 			m.KeyMap.Enter,
+			m.KeyMap.Quit,
+			m.KeyMap.CloseFullHelp,
+		}}
+		return kb
+	case "waiting":
+		kb := [][]key.Binding{{
 			m.KeyMap.Quit,
 			m.KeyMap.CloseFullHelp,
 		}}
@@ -527,12 +576,18 @@ func (m Model) ShortHelp() []key.Binding {
 		kb := []key.Binding{
 			m.KeyMap.Enter,
 			m.KeyMap.Quit,
-			m.KeyMap.CloseFullHelp,
+			m.KeyMap.ShowFullHelp,
 		}
 		return kb
-	case "done":
+	case "confirm":
 		kb := []key.Binding{
 			m.KeyMap.Enter,
+			m.KeyMap.Quit,
+			m.KeyMap.ShowFullHelp,
+		}
+		return kb
+	case "waiting":
+		kb := []key.Binding{
 			m.KeyMap.Quit,
 			m.KeyMap.ShowFullHelp,
 		}
@@ -562,7 +617,7 @@ func New(config utils.Config, query string) {
 		repoNames = append(repoNames, project.Repo_name)
 	}
 
-	templates := []string{"Default"}
+	templates := []string{"Empty"}
 	template_colors := []string{base_color}
 	for lang, color := range config.Templates {
 		templates = append(templates, lang)
@@ -579,6 +634,7 @@ func New(config utils.Config, query string) {
 			template_colors,
 			repoNames,
 			codes,
+			&config,
 		),
 		tea.WithAltScreen(),
 	)
