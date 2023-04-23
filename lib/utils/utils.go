@@ -6,6 +6,9 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
+
+	"github.com/mergestat/timediff"
 )
 
 // type project
@@ -18,7 +21,16 @@ type Project struct {
 	Lang         string
 	Color        string
 	Path         string
+	Timestamp    time.Time //Time the proejct was last modified
 }
+
+func (p Project) Title() string { return p.Display_Name }
+func (p Project) Description() string {
+	timestr := timediff.TimeDiff(p.Timestamp, timediff.WithStartTime(time.Now()))
+	formatted := fmt.Sprintf("Updated %s" , timestr)
+	return formatted
+}
+func (p Project) FilterValue() string { return p.Name+p.Lang }
 
 func ToHyphenName(s string) string {
 	s = regexp.MustCompile(`([a-z])([A-Z])`).ReplaceAllString(s, "${1}-${2}")
@@ -86,6 +98,8 @@ func getThemedProjects(path string, lang string, color string) []Project {
 			continue
 		}
 		code, name, folder_name, repo_name, display_name := discombobulate(subentry.Name())
+
+		timestamp, _ := getDirectoryTimestamp(path + "/" + lang + "/" + subentry.Name())
 		project := Project{
 			Name:         name,
 			Folder_name:  folder_name,
@@ -95,11 +109,46 @@ func getThemedProjects(path string, lang string, color string) []Project {
 			Lang:         lang,
 			Color:        color,
 			Path:         path + "/" + lang + "/" + subentry.Name(),
+			Timestamp:    timestamp,
 		}
 		themedProjects = append(themedProjects, project)
 	}
 	return themedProjects
 
+}
+
+func getDirectoryTimestamp(dirPath string) (time.Time, error) {
+	// Check if the directory exists
+	fileInfo, err := os.Stat(dirPath)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	// If the directory contains a .git file, return the modification time of that file
+	gitFilePath := dirPath + "/.git"
+	gitFileInfo, err := os.Stat(gitFilePath)
+	if err == nil && !gitFileInfo.IsDir() {
+		return gitFileInfo.ModTime(), nil
+	}
+
+	// If the directory does not contain a .git file, return the creation time of the directory
+	if fileInfo.IsDir() {
+		return fileInfo.ModTime(), nil
+	}
+
+	// If the directory exists but is not a directory, return an error
+	return time.Time{}, fmt.Errorf("%s is not a directory", dirPath)
+}
+
+func main() {
+	dirPath := "/path/to/your/directory"
+	timestamp, err := getDirectoryTimestamp(dirPath)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println(timestamp)
 }
 
 func GetProjects(config Config) ([]Project, error) {
@@ -119,6 +168,11 @@ func GetProjects(config Config) ([]Project, error) {
 			projectNames = append(projectNames, themedProjects...)
 		} else {
 			code, name, folder_name, repo_name, display_name := discombobulate(entry.Name())
+
+			timestamp, err := getDirectoryTimestamp(config.Projects_path + "/" + entry.Name())
+			if err != nil {
+				return nil, err
+			}
 			project := Project{
 				Name:         name,
 				Folder_name:  folder_name,
@@ -128,6 +182,7 @@ func GetProjects(config Config) ([]Project, error) {
 				Lang:         "Mixed",
 				Color:        config.Base_color,
 				Path:         config.Projects_path + "/" + entry.Name(),
+				Timestamp:    timestamp,
 			}
 			projectNames = append(projectNames, project)
 		}

@@ -9,6 +9,7 @@ import (
 
 	archive "github.com/antonio-leitao/nau/lib/archive"
 	configure "github.com/antonio-leitao/nau/lib/configure"
+	home "github.com/antonio-leitao/nau/lib/home"
 	new "github.com/antonio-leitao/nau/lib/new"
 	open "github.com/antonio-leitao/nau/lib/open"
 	utils "github.com/antonio-leitao/nau/lib/utils"
@@ -39,8 +40,8 @@ func main() {
 	}
 	// Parse the command-line arguments
 	if len(os.Args) < 2 {
-		//home.Home()
-		fmt.Printf("TODO: Nau's homepage, a TUI.")
+		home.Home(config)
+		os.Exit(0)
 	}
 
 	command := strings.ToLower(os.Args[1])
