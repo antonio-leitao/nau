@@ -190,8 +190,8 @@ func (d DefaultDelegate) Render(w io.Writer, m Model, index int, item Item) {
 			matched := unmatched.Copy().Inherit(s.FilterMatch)
 			title = lipgloss.StyleRunes(title, matchedRunes, matched, unmatched)
 		}
-		title = s.SelectedTitle.Render(title)
-		desc = s.SelectedDesc.Render(desc)
+		title = s.SelectedTitle.Foreground(lipgloss.Color(item.GetColor())).Render(title)
+		desc = s.SelectedDesc.Foreground(lipgloss.Color(item.GetSubduedColor())).Render(desc)
 	} else {
 		if isFiltered {
 			// Highlight matches

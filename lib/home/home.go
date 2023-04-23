@@ -12,6 +12,7 @@ import (
 )
 
 var docStyle = lipgloss.NewStyle().Margin(1, 2)
+
 type model struct {
 	list list.Model
 }
@@ -40,9 +41,10 @@ func (m model) View() string {
 	return docStyle.Render(m.list.View())
 }
 
-type CustomDelegate struct{
+type CustomDelegate struct {
 	list.DefaultDelegate
 }
+
 // 1 Project
 func Home(config utils.Config) {
 	//Run open and open project
@@ -74,5 +76,5 @@ func Home(config utils.Config) {
 		fmt.Println("Error running program:", err)
 		os.Exit(1)
 	}
-	
+
 }

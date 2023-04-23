@@ -2,7 +2,7 @@
 // Because I couldn't get the styling to come from the item itself
 // In my opninion there is no need for a delgate. The item interface should dictate how it iteraacts with
 // the models state. Delegates just make it so much more confusing and honestly
-// much less customizable. TODO: add PR about this.
+// much less customizable.
 package list
 
 import (
@@ -29,6 +29,8 @@ type Item interface {
 	// FilterValue is the value we use when filtering against this item when
 	// we're filtering the list.
 	FilterValue() string
+	GetSubduedColor() string
+	GetColor() string
 }
 
 // ItemDelegate encapsulates the general functionality for all list items. The

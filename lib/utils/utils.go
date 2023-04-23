@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lucasb-eyer/go-colorful"
 	"github.com/mergestat/timediff"
 )
 
@@ -27,10 +28,15 @@ type Project struct {
 func (p Project) Title() string { return p.Display_Name }
 func (p Project) Description() string {
 	timestr := timediff.TimeDiff(p.Timestamp, timediff.WithStartTime(time.Now()))
-	formatted := fmt.Sprintf("Updated %s" , timestr)
+	formatted := fmt.Sprintf("Updated %s", timestr)
 	return formatted
 }
-func (p Project) FilterValue() string { return p.Name+p.Lang }
+func (p Project) FilterValue() string     { return p.Name + p.Lang }
+func (p Project) GetColor() string        { return p.Color }
+func (p Project) GetSubduedColor() string {
+	
+	subduedColor,_ := DimColor(p.Color,0.4)
+	return subduedColor }
 
 func ToHyphenName(s string) string {
 	s = regexp.MustCompile(`([a-z])([A-Z])`).ReplaceAllString(s, "${1}-${2}")
@@ -140,16 +146,6 @@ func getDirectoryTimestamp(dirPath string) (time.Time, error) {
 	return time.Time{}, fmt.Errorf("%s is not a directory", dirPath)
 }
 
-func main() {
-	dirPath := "/path/to/your/directory"
-	timestamp, err := getDirectoryTimestamp(dirPath)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	fmt.Println(timestamp)
-}
 
 func GetProjects(config Config) ([]Project, error) {
 	var projectNames []Project
@@ -192,29 +188,29 @@ func GetProjects(config Config) ([]Project, error) {
 	return projectNames, nil
 }
 
-// func DimColor(hexColor string, factor float64) (string, error) {
-//     // Parse the hexadecimal color string
-//     c, err := colorful.Hex(hexColor)
-//     if err != nil {
-//         return "", err
-//     }
+func DimColor(hexColor string, factor float64) (string, error) {
+    // Parse the hexadecimal color string
+    c, err := colorful.Hex(hexColor)
+    if err != nil {
+        return "", err
+    }
 
-//     // Convert the color to the HSL color space
-//     h, s, l := c.Hsl()
+    // Convert the color to the HSL color space
+    h, s, l := c.Hsl()
 
-//     // Dim the color by reducing the saturation and increasing the lightness
-//     s *= factor
-//     l += (1 - l) * (1 - factor)
+    // Dim the color by reducing the saturation and increasing the lightness
+    s *= (1 - factor)
+    l *= (1 - factor)
 
-//     // Convert the dimmed color back to the RGB color space
-//     dimmed := colorful.Hsl(h, s, l)
-//     r, g, b := dimmed.RGB255()
+    // Convert the dimmed color back to the RGB color space
+    dimmed := colorful.Hsl(h, s, l)
+    r, g, b := dimmed.RGB255()
 
-//     // Format the RGB values as a hexadecimal color string
-//     dimmedHex := fmt.Sprintf("#%02x%02x%02x", r, g, b)
+    // Format the RGB values as a hexadecimal color string
+    dimmedHex := fmt.Sprintf("#%02x%02x%02x", r, g, b)
 
-//     return dimmedHex, nil
-// }
+    return dimmedHex, nil
+}
 
 func contains(color_map map[string]string, key string) bool {
 	_, ok := color_map[key]
