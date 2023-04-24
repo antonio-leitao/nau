@@ -31,6 +31,7 @@ type Item interface {
 	FilterValue() string
 	GetSubduedColor() string
 	GetColor() string
+	SubmitValue() string
 }
 
 // ItemDelegate encapsulates the general functionality for all list items. The
@@ -210,8 +211,8 @@ func New(items []Item, delegate ItemDelegate, width, height int) Model {
 		showStatusBar:         true,
 		showPagination:        true,
 		showHelp:              true,
-		itemNameSingular:      "item",
-		itemNamePlural:        "items",
+		itemNameSingular:      "project",
+		itemNamePlural:        "projects",
 		filteringEnabled:      true,
 		KeyMap:                DefaultKeyMap(),
 		Filter:                DefaultFilter,
@@ -433,6 +434,11 @@ func (m Model) SelectedItem() Item {
 	}
 
 	return items[i]
+}
+
+//handles submission
+func (m Model) Submit() string {
+	return m.SelectedItem().SubmitValue()
 }
 
 // MatchesForItem returns rune positions matched by the current filter, if any.

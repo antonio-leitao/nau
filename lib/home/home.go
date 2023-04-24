@@ -3,7 +3,9 @@ package home
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"sort"
+	"strings"
 
 	list "github.com/antonio-leitao/nau/lib/list"
 	utils "github.com/antonio-leitao/nau/lib/utils"
@@ -11,12 +13,48 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-var docStyle = lipgloss.NewStyle().Margin(1, 2)
+var (
+	verySubduedColor = lipgloss.AdaptiveColor{Light: "#DDDADA", Dark: "#3C3C3C"}
+	subduedColor = lipgloss.AdaptiveColor{Light: "#9B9B9B", Dark: "#5C5C5C"}
+	highlight = lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "#7D56F4"}
+	special   = lipgloss.AdaptiveColor{Light: "#43BF6D", Dark: "#73F59F"}
+
+	divider = lipgloss.NewStyle().
+		SetString("•").
+		Padding(0, 1).
+		Foreground(verySubduedColor).
+		String()
+
+	url       = lipgloss.NewStyle().Foreground(special).Render
+	docStyle  = lipgloss.NewStyle().Width(50).MarginTop(2)
+	descStyle = lipgloss.NewStyle().MarginTop(1)
+
+	infoStyle = lipgloss.NewStyle().
+			BorderStyle(lipgloss.NormalBorder()).
+			BorderTop(true).
+			BorderForeground(verySubduedColor).
+			Foreground(subduedColor)
+)
 
 type model struct {
-	list list.Model
+	list          list.Model
+	list_width int
+	width         int
+	height        int
+	templates     []string
+	base_color string
+	done bool
+	paths string
 }
 
+func (m model) HeaderView() string {
+	temps := strings.Join(m.templates, " • ")
+	desc := lipgloss.JoinVertical(lipgloss.Left,
+		descStyle.Render("NAU: project manager"),
+		infoStyle.Render(temps),
+	)
+return desc
+}
 func (m model) Init() tea.Cmd {
 	return nil
 }
@@ -27,9 +65,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.String() == "ctrl+c" {
 			return m, tea.Quit
 		}
+		if msg.String()=="enter"&& m.list.FilterState()!=list.Filtering{
+			m.done=true
+			return m, m.Submit
+		}
 	case tea.WindowSizeMsg:
-		h, v := docStyle.GetFrameSize()
-		m.list.SetSize(msg.Width-h, msg.Height-v)
+		//	h, v := docStyle.GetFrameSize()
+		m.width = msg.Width
+		m.height = msg.Height
+		m.list.SetSize(m.list_width, m.height-30)
 	}
 
 	var cmd tea.Cmd
@@ -38,11 +82,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	return docStyle.Render(m.list.View())
+	var sections []string
+	sections = append(sections, m.HeaderView())
+	sections = append(sections, docStyle.Render(m.list.View()))
+	return lipgloss.Place(
+		m.width,
+		m.height,
+		lipgloss.Center,
+		lipgloss.Center, lipgloss.JoinVertical(lipgloss.Center, sections...))
 }
-
-type CustomDelegate struct {
-	list.DefaultDelegate
+func (m model) Submit()tea.Msg{
+	path :=m.list.Submit() 
+	cmd := exec.Command("code", path)
+	_ = cmd.Run()
+	return nil //this will make program run ad infinitum. Change to tea.Quit() 
 }
 
 // 1 Project
@@ -65,8 +118,20 @@ func Home(config utils.Config) {
 	for i, p := range projects {
 		items[i] = p
 	}
+	//get list of templates
+	keys := make([]string, 0, len(config.Templates))
+	for k := range config.Templates {
+		keys = append(keys, k)
+	}
 
-	m := model{list: list.New(items, list.NewDefaultDelegate(), 0, 0)}
+	delegate := list.NewDefaultDelegate()
+	m := model{
+		list_width: 50,
+		done: false,
+		templates:     keys,
+		base_color: config.Base_color,
+		list:          list.New(items, delegate, 0, 0),
+	}
 	m.list.Title = "Projects"
 	m.list.Styles.Title.Background(lipgloss.Color(config.Base_color))
 
