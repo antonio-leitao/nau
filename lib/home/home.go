@@ -27,7 +27,7 @@ var (
 
 	url       = lipgloss.NewStyle().Foreground(special).Render
 	docStyle  = lipgloss.NewStyle().Width(50).MarginTop(2)
-	descStyle = lipgloss.NewStyle().MarginTop(1)
+	descStyle = lipgloss.NewStyle().MarginTop(5)
 
 	infoStyle = lipgloss.NewStyle().
 			BorderStyle(lipgloss.NormalBorder()).
@@ -72,8 +72,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		//	h, v := docStyle.GetFrameSize()
 		m.width = msg.Width
-		m.height = msg.Height
-		m.list.SetSize(m.list_width, m.height-30)
+		m.height = int(float64(msg.Height) * 0.75)
+		m.list.SetSize(m.list_width, m.height)
 	}
 
 	var cmd tea.Cmd
