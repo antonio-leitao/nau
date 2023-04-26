@@ -1,3 +1,5 @@
 nau
 Makefile
 /tapes
+dist/
+.env
