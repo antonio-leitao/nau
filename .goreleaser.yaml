@@ -39,6 +39,14 @@ changelog:
       - '^docs:'
       - '^test:'
 
+brews:
+  - name: nau 
+    homepage: https://github.com/antonio-leitao/homebrew-taps
+    description: Modular project management tool.
+    tap:
+      owner: antonio-leitao
+      name: homebrew-taps
+        
 # The lines beneath this are called `modelines`. See `:help modeline`
 # Feel free to remove those if you don't want/use them.
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
