@@ -15,9 +15,9 @@ import (
 
 var (
 	verySubduedColor = lipgloss.AdaptiveColor{Light: "#DDDADA", Dark: "#3C3C3C"}
-	subduedColor = lipgloss.AdaptiveColor{Light: "#9B9B9B", Dark: "#5C5C5C"}
-	highlight = lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "#7D56F4"}
-	special   = lipgloss.AdaptiveColor{Light: "#43BF6D", Dark: "#73F59F"}
+	subduedColor     = lipgloss.AdaptiveColor{Light: "#9B9B9B", Dark: "#5C5C5C"}
+	highlight        = lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "#7D56F4"}
+	special          = lipgloss.AdaptiveColor{Light: "#43BF6D", Dark: "#73F59F"}
 
 	divider = lipgloss.NewStyle().
 		SetString("•").
@@ -37,14 +37,15 @@ var (
 )
 
 type model struct {
-	list          list.Model
+	list       list.Model
 	list_width int
-	width         int
-	height        int
-	templates     []string
+	width      int
+	height     int
+	templates  []string
 	base_color string
-	done bool
-	paths string
+	editor     string
+	done       bool
+	paths      string
 }
 
 func (m model) HeaderView() string {
@@ -53,7 +54,7 @@ func (m model) HeaderView() string {
 		descStyle.Render("NAU: project manager"),
 		infoStyle.Render(temps),
 	)
-return desc
+	return desc
 }
 func (m model) Init() tea.Cmd {
 	return nil
@@ -65,8 +66,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.String() == "ctrl+c" {
 			return m, tea.Quit
 		}
-		if msg.String()=="enter"&& m.list.FilterState()!=list.Filtering{
-			m.done=true
+		if msg.String() == "enter" && m.list.FilterState() != list.Filtering {
+			m.done = true
 			return m, m.Submit
 		}
 	case tea.WindowSizeMsg:
@@ -91,11 +92,11 @@ func (m model) View() string {
 		lipgloss.Center,
 		lipgloss.Center, lipgloss.JoinVertical(lipgloss.Center, sections...))
 }
-func (m model) Submit()tea.Msg{
-	path :=m.list.Submit() 
-	cmd := exec.Command("code", path)
+func (m model) Submit() tea.Msg {
+	path := m.list.Submit()
+	cmd := exec.Command(m.editor, path)
 	_ = cmd.Run()
-	return nil //this will make program run ad infinitum. Change to tea.Quit() 
+	return tea.Quit() //this will make program run ad infinitum. Change to tea.Quit()
 }
 
 // 1 Project
@@ -127,10 +128,11 @@ func Home(config utils.Config) {
 	delegate := list.NewDefaultDelegate()
 	m := model{
 		list_width: 50,
-		done: false,
-		templates:     keys,
+		editor:     config.Editor,
+		done:       false,
+		templates:  keys,
 		base_color: config.Base_color,
-		list:          list.New(items, delegate, 0, 0),
+		list:       list.New(items, delegate, 0, 0),
 	}
 	m.list.Title = "Projects"
 	m.list.Styles.Title.Background(lipgloss.Color(config.Base_color))

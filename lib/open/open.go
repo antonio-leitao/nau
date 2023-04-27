@@ -32,7 +32,7 @@ func Open(config utils.Config, query string) {
 
 	//open vscode if something is found
 	path := projects[candidates[0].Index].Path
-	cmd := exec.Command("code", path)
+	cmd := exec.Command(config.Editor, path)
 	err := cmd.Run()
 	if err != nil {
 		fmt.Println(err)

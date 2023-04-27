@@ -25,7 +25,7 @@ func readConfig() (utils.Config, error) {
 		Email:          "aleitao@novaims.unl.pt",
 		Remote:         "https://github.com/antonio-leitao",
 		Base_color:     "#814584",
-		Editor:         "code",
+		Editor:         "nvim",
 		Projects_path:  "/Documents/Projects",
 		Templates_path: "/Documents/Templates",
 		Archives_path:  "/Documents/Archives",

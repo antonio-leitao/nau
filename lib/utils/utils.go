@@ -289,22 +289,23 @@ type Config struct {
 }
 
 func (c Config) Print() {
-	fmt.Println("Name:", c.Name)
-	fmt.Println("Version:", c.Version)
+	fmt.Println("NAME:", c.Name)
+	fmt.Println("VERSION:", c.Version)
 	fmt.Println("URL:", c.Url)
-	fmt.Println("Author:", c.Author)
-	fmt.Println("Email:", c.Email)
-	fmt.Println("Remote:", c.Remote)
+	fmt.Println("AUTHOR:", c.Author)
+	fmt.Println("EMAIL:", c.Email)
+	fmt.Println("REMOTE:", c.Remote)
+	fmt.Println("EDITOR:", c.Editor)
 
 	keys := make([]string, 0, len(c.Templates))
 	for key := range c.Templates {
 		keys = append(keys, key)
 	}
 
-	fmt.Println("Templates:", c.Templates)
-	fmt.Println("Projects_path:", c.Projects_path)
-	fmt.Println("Templates_path:", c.Templates_path)
-	fmt.Println("Archives_path:", c.Archives_path)
+	fmt.Println("TEMPLATES:", keys)
+	fmt.Println("PROJECTS_PATH:", c.Projects_path)
+	fmt.Println("TEMPLATES_PATH:", c.Templates_path)
+	fmt.Println("ARCHIVES_PATH:", c.Archives_path)
 
 }
 func ConvertPath(path string) (string, error) {
