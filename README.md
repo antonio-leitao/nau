@@ -80,19 +80,13 @@ nau archive <project>
 ```
 If `project` is specified will run `make archive` before compressing and moving it to `Archives` directory. If it is not specified will prompt user to choose which one. Ordered in reverse order of last modified.
 
-### Config
-Shows current configuration.
-```shell
-nau config
-```
-
 ## Templates
 Nau relies on understanding what type are your projects. Each project either comes from a template or it doesnt. The template directory is stored in `config.Templates_path` and should look like this:
 ```text
 templates
-│   Python_#000000
-│   Rust_#000000
-│   Web_#000000
+│   Python_#3776AB
+│   Rust_#B2292D
+│   Web_#F7DF1E
 │   PascalCase_#000000
 ```
 The supplied colors are going to be used by NAU thorughout the commands.This will result in the following projects directory:

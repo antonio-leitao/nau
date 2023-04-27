@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	archive "github.com/antonio-leitao/nau/lib/archive"
+	initiate "github.com/antonio-leitao/nau/lib/initiate"
 	configure "github.com/antonio-leitao/nau/lib/configure"
 	home "github.com/antonio-leitao/nau/lib/home"
 	new "github.com/antonio-leitao/nau/lib/new"
@@ -121,6 +122,9 @@ func main() {
 
 	// Launch the appropriate command
 	switch command {
+	case "init":
+		initiate.Init(config)
+		os.Exit(0)
 	case "open":
 		if len(os.Args) < 3 {
 			fmt.Printf("TODO: list and choose all projects")

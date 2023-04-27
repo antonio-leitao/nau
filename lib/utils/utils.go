@@ -314,10 +314,8 @@ func ConvertPath(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
 	// Expand the tilde symbol to the full path of the home directory
 	expandedPath := filepath.Join(usr.HomeDir, path)
-
 	// Return the absolute path
 	return filepath.Abs(expandedPath)
 }
