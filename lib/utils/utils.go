@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -32,10 +33,9 @@ func (p Project) Description() string {
 	return formatted
 }
 func (p Project) FilterValue() string { return p.Name + p.Lang }
-func (p Project) SubmitValue() string {return p.Path}
+func (p Project) SubmitValue() string { return p.Path }
 func (p Project) GetColor() string    { return p.Color }
 func (p Project) GetSubduedColor() string {
-
 	subduedColor, _ := DimColor(p.Color, 0.4)
 	return subduedColor
 }
@@ -150,8 +150,14 @@ func getDirectoryTimestamp(dirPath string) (time.Time, error) {
 
 func GetProjects(config Config) ([]Project, error) {
 	var projectNames []Project
-	entries, err := os.ReadDir(config.Projects_path)
 
+	//convert the raw path
+	projectPath, err := ConvertPath(config.Projects_path)
+	if err != nil {
+		return nil, err
+	}
+	//read projects directory
+	entries, err := os.ReadDir(projectPath)
 	if err != nil {
 		return nil, err
 	}
@@ -161,12 +167,12 @@ func GetProjects(config Config) ([]Project, error) {
 			continue
 		}
 		if contains(config.Templates, entry.Name()) {
-			themedProjects := getThemedProjects(config.Projects_path, entry.Name(), config.Templates[entry.Name()])
+			themedProjects := getThemedProjects(projectPath, entry.Name(), config.Templates[entry.Name()])
 			projectNames = append(projectNames, themedProjects...)
 		} else {
 			code, name, folder_name, repo_name, display_name := discombobulate(entry.Name())
 
-			timestamp, err := getDirectoryTimestamp(config.Projects_path + "/" + entry.Name())
+			timestamp, err := getDirectoryTimestamp(projectPath + "/" + entry.Name())
 			if err != nil {
 				return nil, err
 			}
@@ -178,7 +184,7 @@ func GetProjects(config Config) ([]Project, error) {
 				Code:         code,
 				Lang:         "Mixed",
 				Color:        config.Base_color,
-				Path:         config.Projects_path + "/" + entry.Name(),
+				Path:         projectPath + "/" + entry.Name(),
 				Timestamp:    timestamp,
 			}
 			projectNames = append(projectNames, project)
@@ -267,16 +273,18 @@ func LoadTemplatesColorMap(dirPath string) (map[string]string, error) {
 }
 
 type Config struct {
-	Name           string `toml:"name"`
-	Version        int    `toml:"version"`
-	Url            string `toml:"url"`
-	Author         string `toml:"author"`
-	Email          string `toml:"email"`
-	Remote         string `toml:"remote"`
-	Base_color     string `toml:"base_color"`
-	Projects_path  string `toml:"projects_path"`
-	Templates_path string `toml:"templates_path"`
-	Archives_path  string `toml:"archives_path"`
+	Name           string
+	Version        string
+	Url            string
+	Author         string
+	Email          string
+	Website        string
+	Remote         string
+	Base_color     string
+	Projects_path  string
+	Templates_path string
+	Archives_path  string
+	Editor         string
 	Templates      map[string]string
 }
 
@@ -298,4 +306,17 @@ func (c Config) Print() {
 	fmt.Println("Templates_path:", c.Templates_path)
 	fmt.Println("Archives_path:", c.Archives_path)
 
+}
+func ConvertPath(path string) (string, error) {
+	// Get the current user's home directory
+	usr, err := user.Current()
+	if err != nil {
+		return "", err
+	}
+
+	// Expand the tilde symbol to the full path of the home directory
+	expandedPath := filepath.Join(usr.HomeDir, path)
+
+	// Return the absolute path
+	return filepath.Abs(expandedPath)
 }

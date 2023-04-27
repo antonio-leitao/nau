@@ -1,47 +1,90 @@
 package configure
 
 import (
+	"bufio"
 	"fmt"
 	"os"
-	"reflect"
+	"strings"
 
-	"github.com/BurntSushi/toml"
 	utils "github.com/antonio-leitao/nau/lib/utils"
 )
 
-func UpdateConfigField(config *utils.Config, field string, value interface{}) error {
-	v := reflect.ValueOf(config).Elem()
-	fieldValue := v.FieldByName(field)
+// these have to be lowercase for better matching
+var customizableFields = []string{"AUTHOR", "EMAIL", "REMOTE", "BASE_COLOR", "EDITOR", "PROJECTS_PATH", "TEMPLATES_PATH", "ARCHIVES_PATH"}
 
-	if !fieldValue.IsValid() {
-		return fmt.Errorf("invalid field name: %s", field)
+func isCustomizableField(field string) bool {
+	for _, f := range customizableFields {
+		if f == field {
+			return true
+		}
 	}
-
-	if !fieldValue.CanSet() {
-		return fmt.Errorf("cannot set field value: %s", field)
+	return false
+}
+func UpdateConfigField(field string, value string) error {
+	//make it lowercase so we can match. maybe upper case?
+	field = strings.ToUpper(field)
+	//check if user can customize it
+	if !isCustomizableField(field) {
+		return fmt.Errorf("Invalid field: %s", field)
 	}
-
-	fieldType := fieldValue.Type()
-	val := reflect.ValueOf(value)
-
-	if !val.Type().ConvertibleTo(fieldType) {
-		return fmt.Errorf("value is not convertible to field type: %s", fieldType)
-	}
-
-	fieldValue.Set(val.Convert(fieldType))
-
-	// Encode the updated struct to TOML and save it to the file
-	filePath := "nau.config.toml"
-	f, err := os.Create(filePath)
+	//migh tnot me able to get user
+	configFile, err := utils.ConvertPath(".naurc")
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	if _, err := os.Stat(configFile); os.IsNotExist(err) {
+		// Create an empty config file if it does not exist
+		if _, err := os.Create(configFile); err != nil {
+			return err
+		}
+	}
 
-	err = toml.NewEncoder(f).Encode(config)
+	file, err := os.OpenFile(configFile, os.O_RDWR, 0644)
 	if err != nil {
 		return err
 	}
+	defer file.Close()
 
-	return nil
+	scanner := bufio.NewScanner(file)
+	var lines []string
+	found := false
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) != 2 {
+			return fmt.Errorf("Invalid config format")
+		}
+
+		key := strings.TrimSpace(parts[0])
+
+		if key == field {
+			lines = append(lines, fmt.Sprintf("%s=%s", field, value))
+			found = true
+		} else {
+			lines = append(lines, line)
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+
+	if !found {
+		lines = append(lines, fmt.Sprintf("%s=%s", field, value))
+	}
+
+	if _, err := file.Seek(0, 0); err != nil {
+		return err
+	}
+
+	if err := file.Truncate(0); err != nil {
+		return err
+	}
+
+	writer := bufio.NewWriter(file)
+	for _, line := range lines {
+		fmt.Fprintln(writer, line)
+	}
+	return writer.Flush()
 }

@@ -135,7 +135,10 @@ func Archive(config utils.Config, query string) {
 		os.Exit(1)
 	}
 
-	//open vscode if something is found
-	path := projects[candidates[0].Index].Path
-	archiveProject(config.Archives_path, path)
+	projectPath := projects[candidates[0].Index].Path
+    archivesPath,err := utils.ConvertPath(config.Archives_path)
+    if err !=nil{
+        fmt.Println("Archives not found")
+    }
+	archiveProject(archivesPath,projectPath)
 }

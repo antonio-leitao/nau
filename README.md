@@ -1,23 +1,10 @@
 # NAU 
 The side-project manager you didn't know you needed.
-
-## Templates
-Nau relies on understanding what type are your projects. Each project either comes from a template or it doesnt. The template directory is stored in `config.Templates_path` and should look like this:
-```text
-templates
-│   Python_#000000
-│   Rust_#000000
-│   Web_#000000
-│   PascalCase_#000000
-```
-The supplied colors are going to be used by NAU thorughout the commands.This will result in the following projects directory:
-```text
-projects
-└───Python
-│   │   FRS_FirstProject
-│   │   MPR_MyProject
-└───Rust
-│   │   IDX_RustProject
+# Installation
+```bash
+# macOS or Linux
+brew tap antonio-leitao/taps
+brew install nau
 ```
 
 ## Commands
@@ -63,5 +50,24 @@ If `project` is specified will run `make archive` before compressing and moving 
 Shows current configuration.
 ```shell
 nau config
+```
+
+## Templates
+Nau relies on understanding what type are your projects. Each project either comes from a template or it doesnt. The template directory is stored in `config.Templates_path` and should look like this:
+```text
+templates
+│   Python_#000000
+│   Rust_#000000
+│   Web_#000000
+│   PascalCase_#000000
+```
+The supplied colors are going to be used by NAU thorughout the commands.This will result in the following projects directory:
+```text
+projects
+└───Python
+│   │   FRS_FirstProject
+│   │   MPR_MyProject
+└───Rust
+│   │   IDX_RustProject
 ```
 
