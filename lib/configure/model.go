@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/antonio-leitao/nau/lib/utils"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -23,9 +22,13 @@ type Styles struct {
 	focusedButton lipgloss.Style
 	blurredButton lipgloss.Style
 	promptPlace   lipgloss.Style
+	warningStyle  lipgloss.Style
+	errorStyle    lipgloss.Style
 }
 
 func DefaultStyles(base_color string) Styles {
+	verySubduedColor := lipgloss.AdaptiveColor{Light: "#DDDADA", Dark: "#3C3C3C"}
+	subduedColor := lipgloss.AdaptiveColor{Light: "#9B9B9B", Dark: "#5C5C5C"}
 	title_text := "#ffffd7" //230
 	var s Styles
 	s.titleStyle = lipgloss.NewStyle().
@@ -40,6 +43,8 @@ func DefaultStyles(base_color string) Styles {
 	s.noStyle = lipgloss.NewStyle()
 	s.focusedButton = lipgloss.NewStyle().Background(lipgloss.Color(base_color)).Foreground(lipgloss.Color(title_text)).Align(lipgloss.Center).Padding(0, 3).Margin(1, 1)
 	s.blurredButton = lipgloss.NewStyle().Background(lipgloss.Color("235")).Foreground(lipgloss.Color("254")).Align(lipgloss.Center).Padding(0, 3).Margin(1, 1)
+	s.warningStyle = lipgloss.NewStyle().Foreground(verySubduedColor)
+	s.errorStyle = lipgloss.NewStyle().Foreground(subduedColor)
 	return s
 }
 
@@ -98,25 +103,35 @@ type model struct {
 	keys       keyMap
 	help       help.Model
 	styles     Styles
+	errors     []string
+	line_width int
 }
 
 func initialModel(base_color string) model {
 	m := model{
-		inputs: make([]Field, len(customizableFields)),
-		keys:   keys,
-		help:   help.New(),
-		styles: DefaultStyles(base_color),
+		inputs:     make([]Field, len(customizableFields)),
+		keys:       keys,
+		help:       help.New(),
+		styles:     DefaultStyles(base_color),
+		errors:     make([]string, len(customizableFields)),
+		line_width: 48,
 	}
-
+	//start all errors as empty
+	for i := range m.errors {
+		m.errors[i] = ""
+	}
+	//start all the fields
 	var f Field
 	for i, field := range customizableFields {
 		f.input = textinput.New()
-		f.input.CharLimit = 32
-		f.input.Placeholder = field
-		f.name = utils.ToDisplayName(field)
+		f.input.CharLimit = m.line_width
+		f.name = field
+		f.input.Prompt = " • "
+		f.input.Placeholder = normalizeString(field)
 		//focus on the first field right away
 		if i == 0 {
 			f.input.Focus()
+			f.input.Prompt = " > "
 			f.input.PromptStyle = m.styles.focusedStyle
 			f.input.TextStyle = m.styles.focusedStyle
 		}
@@ -124,7 +139,13 @@ func initialModel(base_color string) model {
 	}
 	return m
 }
-
+func normalizeString(s string) string {
+	// Replace underscores with spaces
+	s = strings.ReplaceAll(s, "_", " ")
+	// Capitalize each word
+	s = strings.Title(strings.ToLower(s))
+	return s
+}
 func (m model) Init() tea.Cmd {
 	return textinput.Blink
 }
@@ -144,7 +165,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, m.keys.Submit):
 			if m.focusIndex == len(m.inputs) {
 				//Evaluate first and submit later
-				return m, tea.Quit
+				m.Validate()
+				//if there are not errors just go
+				if allStringsEmpty(m.errors) {
+					return m, m.Submit
+				}
 			}
 		}
 	}
@@ -166,12 +191,14 @@ func (m model) handleChange() (tea.Model, tea.Cmd) {
 		if i == m.focusIndex {
 			// Set focused state
 			cmds[i] = m.inputs[i].input.Focus()
+			m.inputs[i].input.Prompt = " > "
 			m.inputs[i].input.PromptStyle = m.styles.focusedStyle
 			m.inputs[i].input.TextStyle = m.styles.focusedStyle
 			continue
 		}
 		// Remove focused state
 		m.inputs[i].input.Blur()
+		m.inputs[i].input.Prompt = " • "
 		m.inputs[i].input.PromptStyle = m.styles.noStyle
 		m.inputs[i].input.TextStyle = m.styles.noStyle
 	}
@@ -187,16 +214,71 @@ func (m *model) updateInputs(msg tea.Msg) tea.Cmd {
 	}
 	return tea.Batch(cmds...)
 }
+func allStringsEmpty(strList []string) bool {
+	for _, str := range strList {
+		if len(str) != 0 {
+			return false
+		}
+	}
+	return true
+}
+func (m model) Validate() (tea.Model, tea.Cmd) {
+	//clear all errors
+	for i := range m.errors {
+		m.errors[i] = ""
+	}
+	//validate entries
+	for i, field := range customizableFields {
+		value := m.inputs[i].input.Value()
+		if len(value) == 0 {
+			m.errors[i] = m.styles.warningStyle.Render("• Field cannot be empty")
+			continue
+		}
+		error_string := validateValue(field, value)
+		if error_string != "" {
+			m.errors[i] = m.styles.errorStyle.Render(error_string)
+		}
+	}
+	return m, nil
+}
 
+func (m model) Submit() tea.Msg {
+	for _, pair := range m.inputs {
+		UpdateConfigField(pair.name, pair.input.Value())
+	}
+	return tea.Quit() //this will make program run ad infinitum. Change to tea.Quit()
+}
+func (m model) getLongestEntry() int {
+	max_len := 0
+	for _, input := range m.inputs {
+		place_len := len(input.input.Placeholder)
+		value_len := len(input.input.Value())
+		if place_len >= max_len {
+			max_len = place_len
+		}
+		if value_len >= max_len {
+			max_len = value_len
+		}
+	}
+	return max_len
+}
 func (m model) View() string {
 	var b strings.Builder
 	//Add header title
 	title := m.styles.titleStyle.Render("Configure NAU")
 	b.WriteString(title)
 	b.WriteString("\n")
+	//get max_width
+	max_len := m.getLongestEntry() + 5
 	//Add all prompts
 	for i := range m.inputs {
-		b.WriteString(m.styles.promptPlace.Render(m.inputs[i].input.View()))
+		input_string := m.inputs[i].input.View()
+		line_string := lipgloss.JoinHorizontal(
+			lipgloss.Left,
+			lipgloss.NewStyle().Width(max_len).Render(input_string),
+			m.errors[i],
+		)
+		b.WriteString(m.styles.promptPlace.Render(line_string))
 		if i < len(m.inputs)-1 {
 			b.WriteRune('\n')
 		}

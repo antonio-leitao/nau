@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	utils "github.com/antonio-leitao/nau/lib/utils"
@@ -21,12 +22,66 @@ func isCustomizableField(field string) bool {
 	}
 	return false
 }
+
+func dirExists(path string) bool {
+	info, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return info.IsDir()
+}
+
+func isEmailValid(email string) bool {
+	regex := `^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$`
+	match, _ := regexp.MatchString(regex, email)
+	return match
+}
+func isValidUrl(url string) bool {
+	regex := `[(http(s)?):\/\/(www\.)?a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)`
+	match, _ := regexp.MatchString(regex, url)
+	return match
+}
+func isValidHexColor(color string) bool {
+	regex := `^#(?:[0-9a-fA-F]{3}){1,2}$`
+	match, _ := regexp.MatchString(regex, color)
+	return match
+}
+func validateValue(field string, value string) string {
+	switch field {
+	case "EMAIL":
+		if !isEmailValid(value) {
+			return "• Email is not valid"
+		}
+	case "REMOTE", "WEBSITE":
+		if !isValidUrl(value) {
+			return "• Url is not valid"
+		}
+	case "PROJECTS_PATH", "TEMPLATES_PATH", "ARCHIVES_PATH":
+		path, err := utils.ConvertPath(value)
+		if err != nil {
+			return "• " + err.Error()
+		}
+		if !dirExists(path) {
+			return "• Directory does not exist"
+		}
+	case "BASE_COLOR":
+		if !isValidHexColor(value) {
+			return "• Not a valid hex color"
+		}
+	}
+	return ""
+}
 func UpdateConfigField(field string, value string) error {
 	//make it lowercase so we can match. maybe upper case?
 	field = strings.ToUpper(field)
 	//check if user can customize it
 	if !isCustomizableField(field) {
 		return fmt.Errorf("Invalid field: %s", field)
+	}
+	//check if the values are correct
+	err_string := validateValue(field, value)
+	if err_string != "" {
+		return fmt.Errorf(err_string)
 	}
 	//migh tnot me able to get user
 	configFile, err := utils.ConvertPath(".naurc")

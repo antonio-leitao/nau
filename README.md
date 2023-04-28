@@ -25,6 +25,10 @@ You can setup all variables by running
 ```shell
 nau init
 ```
+<p align="center">
+<img alt="NAU demo" src="assets/init.gif" width="600" />
+</p>
+
 Otherwise you can simply change specific fields aat any time by running:
 
 ```shell

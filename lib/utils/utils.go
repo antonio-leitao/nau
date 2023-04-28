@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/lucasb-eyer/go-colorful"
 	"github.com/mergestat/timediff"
 )
@@ -272,6 +273,18 @@ func LoadTemplatesColorMap(dirPath string) (map[string]string, error) {
 	return nameColorMap, nil
 }
 
+func ConvertPath(path string) (string, error) {
+	// Get the current user's home directory
+	usr, err := user.Current()
+	if err != nil {
+		return "", err
+	}
+	// Expand the tilde symbol to the full path of the home directory
+	expandedPath := filepath.Join(usr.HomeDir, path)
+	// Return the absolute path
+	return filepath.Abs(expandedPath)
+}
+
 type Config struct {
 	Name           string
 	Version        string
@@ -307,15 +320,4 @@ func (c Config) Print() {
 	fmt.Println("TEMPLATES_PATH:", c.Templates_path)
 	fmt.Println("ARCHIVES_PATH:", c.Archives_path)
 
-}
-func ConvertPath(path string) (string, error) {
-	// Get the current user's home directory
-	usr, err := user.Current()
-	if err != nil {
-		return "", err
-	}
-	// Expand the tilde symbol to the full path of the home directory
-	expandedPath := filepath.Join(usr.HomeDir, path)
-	// Return the absolute path
-	return filepath.Abs(expandedPath)
 }

@@ -148,20 +148,20 @@ func main() {
 		os.Exit(0)
 	case "config":
 		switch len(os.Args) {
+        case 1: 
+			fmt.Println("Error please supply more arguments:", err)
+			os.Exit(1)
 		case 2:
 			config.Print()
 			return
 			//here we dont need to load the congig
-		case 4:
-			err = configure.UpdateConfigField(os.Args[2], os.Args[3])
+		default:
+            err = configure.UpdateConfigField(os.Args[2], strings.Join(os.Args[3:], " "))
 			if err != nil {
 				fmt.Println("Error updating config file file:", err)
 				os.Exit(1)
 			}
 			return
-		default:
-			fmt.Println("Error please supply more arguments:", err)
-			os.Exit(1)
 		}
 	default:
 		fmt.Printf("Unknown command: %s\n", command)
