@@ -113,7 +113,7 @@ func main() {
 	}
 	// Parse the command-line arguments
 	if len(os.Args) < 2 {
-		config.Print()
+		home.Home(config)
 		os.Exit(0)
 	}
 
@@ -123,7 +123,7 @@ func main() {
 	switch command {
 	case "open":
 		if len(os.Args) < 3 {
-			home.Home(config)
+			open.Expand(config)
 		}
 		open.Open(config, os.Args[2])
 		os.Exit(0)
