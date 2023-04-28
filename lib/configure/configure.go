@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	utils "github.com/antonio-leitao/nau/lib/utils"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 // these have to be lowercase for better matching
@@ -87,4 +88,11 @@ func UpdateConfigField(field string, value string) error {
 		fmt.Fprintln(writer, line)
 	}
 	return writer.Flush()
+}
+func Init(config utils.Config) {
+	model := initialModel(config.Base_color)
+	if _, err := tea.NewProgram(model, tea.WithAltScreen()).Run(); err != nil {
+		fmt.Printf("could not start program: %s\n", err)
+		os.Exit(1)
+	}
 }
