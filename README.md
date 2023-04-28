@@ -23,7 +23,7 @@ ARCHIVES_PATH=  /Documents/Archives
 ```
 You can setup all variables by running
 ```shell
-nau init
+nau config
 ```
 <p align="center">
 <img alt="NAU demo" src="assets/init.gif" width="600" />
@@ -32,7 +32,7 @@ nau init
 Otherwise you can simply change specific fields aat any time by running:
 
 ```shell
-nau <field> <value>
+nau config <field> <value>
 ```
 Below are all available fields with their explanations:
 - `AUTHOR`: Your name
@@ -52,7 +52,7 @@ NAU is built to be modular. Imagine a Makefile but for you computer. Currently i
 ### Home 
 Opens a specific project. Currently calls VSCode.
 ```shell
-nau  
+nau open 
 ```
 Launches NAU's homescreen. Which is a persistent UI for visualizing your projects, ordered by recent changes. Selecting a project opens it. The UI is persistent: the application will not quit unlike the other commands.
 

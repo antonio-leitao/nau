@@ -301,23 +301,96 @@ type Config struct {
 	Templates      map[string]string
 }
 
-func (c Config) Print() {
-	fmt.Println("NAME:", c.Name)
-	fmt.Println("VERSION:", c.Version)
-	fmt.Println("URL:", c.Url)
-	fmt.Println("AUTHOR:", c.Author)
-	fmt.Println("EMAIL:", c.Email)
-	fmt.Println("REMOTE:", c.Remote)
-	fmt.Println("EDITOR:", c.Editor)
+func (c Config) renderBigArt() string {
+	s := `⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⣧⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣄⠀⠀⢀⣿⣤⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣿⠀⠈⠉⢻⡆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⢀⡠⣤⣴⡶⠿⢿⠀⠀⠀⢸⢻⡀⠀⠀⠀⠀⠀⣀⣠⣤⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠰⠛⠋⠉⠀⠀⠀⢸⡀⠀⠀⢸⣀⣧⣤⠴⠒⠚⠛⢻⡍⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⣼⠷⠖⠚⠉⠉⢹⡀⠀⠀⠀⠀⠘⣇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠰⢞⡟⠉⣁⣠⠖⠉⠀⠀⠀⠀⢷⠀⠀⠀⠀⡀⠘⡆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⢀⡞⣠⣾⠟⠁⠀⣀⣀⣀⣀⣀⣈⣧⣰⣺⠿⣿⣿⣿⣆⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⢸⣽⣫⣥⣴⣶⣾⡟⠛⣉⣿⣇⣀⣽⣦⣤⠴⠚⠛⠛⢻⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⣾⣿⣻⠟⢻⣁⣸⣧⣴⣿⣿⣿⠿⣿⣿⡄⠀⠀⠀⠀⠈⢷⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⢀⣀⣿⡮⠶⠶⠛⣛⡿⣿⠟⠋⠀⣿⣧⣿⠹⣵⡄⠀⢀⣤⣽⣾⣷⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⣀⡈⢩⡏⢀⡠⠾⠛⠁⠀⠀⠀⠀⢠⡏⠘⣿⠀⢳⡽⡿⠿⠿⢿⣿⣷⣿⣶⠾⠇⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⢹⡟⠰⠋⢀⣀⣤⣤⣶⡶⠿⠟⠛⡇⠀⡏⣇⠀⠀⠻⡶⠛⠛⠋⠁⠀⣌⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠘⣧⣶⣾⣿⣻⣿⣿⣯⣤⣤⣴⣾⡇⠀⡇⠉⠀⠀⠀⠹⣄⠀⠀⠀⠀⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⣀⠀⠀⢠⣿⣿⠿⣿⣿⣿⣿⣿⣿⣿⣿⣾⡇⠀⡇⠀⠀⠀⠀⠀⠙⣆⠀⠀⢸⠇⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠹⡟⠶⣟⣻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠀⠀⢸⠀⠀⠀⠀⠀⠀⠘⣷⡀⢸⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⣷⠀⠈⠹⡟⠛⠛⣿⠛⢛⡟⠛⣿⢿⣿⡄⠀⠸⡄⠀⠀⠀⠀⠀⠀⠈⢟⣮⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠘⡆⠀⠀⢹⠀⠀⡏⠀⣼⠇⠀⡇⠀⢸⡇⠀⠀⣧⠀⢸⠀⠀⠀⠀⠀⠈⢿⡳⣄⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⢳⡀⠀⠈⣇⢸⠀⠀⣿⠀⠀⡇⠀⣼⢧⢸⡆⠘⣆⡞⣤⠶⠶⣶⣤⣤⣤⣹⡌⠳⣄⡀⠀⠀⠀⠀⠀
+⠀⠀⠘⣇⠀⠀⢹⣸⠀⠀⡟⠀⠀⣧⣼⣿⢸⣹⣷⠈⠉⠉⢻⣷⣶⠶⠾⠽⣿⣿⣿⣦⠀⠙⢦⣀⣀⣤⠆
+⠀⠀⠀⠸⡄⢠⣿⣏⡇⠀⡇⠀⣸⣿⣿⣿⣌⣿⣇⣀⠀⠀⢸⣿⣿⣷⣄⠀⠀⠀⠀⠉⠉⣹⣶⠟⠉⠀⠀
+⠀⠀⠀⠀⢳⣸⣽⢻⣧⠀⣷⢀⣷⢿⣿⣿⡇⠀⣆⣿⣿⣿⡞⠛⠿⠿⠿⣷⣄⣀⣠⣴⠿⠋⠀⠀⠀⠀⠀
+⣠⣀⣀⣀⡼⢯⣿⢺⣿⡀⢹⠘⠛⢸⣿⣿⡇⣼⡟⢿⣻⣿⣿⣆⠀⠀⢀⡠⣿⣿⠟⠁⠀⠀⠀⠀⠀⠀⠀
+⠙⣯⡻⢷⣤⣼⣧⠈⣿⣧⠘⡆⠀⣾⣿⣿⣷⣿⣤⣤⡽⣿⣿⣿⣧⡴⣯⡾⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠸⠖⠋⠉⠉⣩⡧⡽⣿⢷⣇⣀⣿⣿⡾⠿⣿⣿⠠⢶⣾⣿⣿⣷⣾⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⢀⣤⣿⣏⣍⣥⣽⣏⣽⣥⣬⣿⠷⠖⠉⢀⣠⡴⠿⠛⣹⣿⣿⡿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠸⣷⣝⣿⣷⣶⣾⣿⣿⣿⠉⢀⣠⠤⠚⠋⠀⠀⢶⠀⢹⣿⣿⠁⡠⣤⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⢹⣿⣙⣿⣿⣿⣿⣿⣿⣿⣟⡇⠀⠀⢀⣠⣄⣼⣤⢾⣻⠿⢛⣻⣿⣴⣤⣠⡄⠀⠀⠀⠀⠀⠀
+⠀⣠⣤⣔⡛⢿⣟⣻⣉⣁⣬⡟⠻⢿⣿⣷⠶⢶⡏⠈⢻⢀⣄⣼⢁⣠⣽⡋⣙⣴⣧⣿⣧⡄⠀⠀⠀⠀⠀
+⠈⠉⠉⠙⠛⠛⠛⠋⠀⠹⠛⠷⠴⢿⣾⣾⣾⣿⣿⢿⡿⣿⣿⣿⠿⠿⣿⡿⠿⠛⠋⠉⠁⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠁⠘⠿⠛⠙⠉⠠⠛⠻⠿⠛⠛⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀`
+	return s
 
+}
+
+type Styles struct {
+	titleStyle  lipgloss.Style
+	promptStyle lipgloss.Style
+	sepStyle    lipgloss.Style
+}
+
+func defaultStyles(config Config) Styles {
+	verySubduedColor := lipgloss.AdaptiveColor{Light: "#DDDADA", Dark: "#3C3C3C"}
+	subduedColor := lipgloss.AdaptiveColor{Light: "#9B9B9B", Dark: "#5C5C5C"}
+	title_text := "#ffffd7" //230
+	var s Styles
+	s.titleStyle = lipgloss.NewStyle().
+		Margin(1, 0, 1, 0).
+		Padding(0, 1, 0, 1).
+		Background(lipgloss.Color(config.Base_color)).
+		Foreground(lipgloss.Color(title_text))
+	s.sepStyle = lipgloss.NewStyle().
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderBottom(true).
+		BorderForeground(verySubduedColor).
+		Foreground(subduedColor)
+	s.promptStyle = lipgloss.NewStyle().Margin(0, 0, 0, 2).Foreground(lipgloss.Color(config.Base_color))
+	return s
+}
+func (c Config) renderConfig() string {
+	//load new styles
+	s := defaultStyles(c)
+	//get list of templates
 	keys := make([]string, 0, len(c.Templates))
 	for key := range c.Templates {
 		keys = append(keys, key)
 	}
-
-	fmt.Println("TEMPLATES:", keys)
-	fmt.Println("PROJECTS_PATH:", c.Projects_path)
-	fmt.Println("TEMPLATES_PATH:", c.Templates_path)
-	fmt.Println("ARCHIVES_PATH:", c.Archives_path)
-
+	//print fecth info
+	var lines []string
+	lines = append(lines, s.promptStyle.Render("VERSION: ")+c.Version)
+	lines = append(lines, s.sepStyle.Render(s.promptStyle.Render("URL: ")+c.Url))
+	lines = append(lines, s.promptStyle.Render("AUTHOR: ")+c.Author)
+	lines = append(lines, s.promptStyle.Render("EMAIL: ")+c.Email)
+	lines = append(lines, s.promptStyle.Render("WEBSITE: ")+c.Website)
+	lines = append(lines, s.promptStyle.Render("REMOTE: ")+c.Remote)
+	lines = append(lines, s.promptStyle.Render("EDITOR: ")+c.Editor)
+	lines = append(lines, s.promptStyle.Render("TEMPLATES: ")+fmt.Sprintf("%v", keys))
+	lines = append(lines, s.promptStyle.Render("PROJECTS_PATH: ")+c.Projects_path)
+	lines = append(lines, s.promptStyle.Render("TEMPLATES_PATH: ")+c.Templates_path)
+	lines = append(lines, s.promptStyle.Render("ARCHIVES_PATH: ")+c.Archives_path)
+	//Add header to the lines
+	header := s.titleStyle.Render(`|\| /\ |_|`)
+	return lipgloss.JoinVertical(lipgloss.Center, header, lipgloss.JoinVertical(lipgloss.Left, lines...))
+}
+func (c Config) Print() {
+	output := lipgloss.JoinHorizontal(
+		lipgloss.Center,
+		c.renderBigArt(),
+		c.renderConfig(),
+	)
+	fmt.Println(output)
 }

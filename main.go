@@ -113,7 +113,7 @@ func main() {
 	}
 	// Parse the command-line arguments
 	if len(os.Args) < 2 {
-		home.Home(config)
+		config.Print()
 		os.Exit(0)
 	}
 
@@ -121,13 +121,9 @@ func main() {
 
 	// Launch the appropriate command
 	switch command {
-	case "init":
-		configure.Init(config)
-		os.Exit(0)
 	case "open":
 		if len(os.Args) < 3 {
-			fmt.Printf("TODO: list and choose all projects")
-			os.Exit(1)
+			home.Home(config)
 		}
 		open.Open(config, os.Args[2])
 		os.Exit(0)
@@ -148,15 +144,14 @@ func main() {
 		os.Exit(0)
 	case "config":
 		switch len(os.Args) {
-        case 1: 
+		case 1:
 			fmt.Println("Error please supply more arguments:", err)
 			os.Exit(1)
 		case 2:
-			config.Print()
+			configure.Init(config)
 			return
-			//here we dont need to load the congig
 		default:
-            err = configure.UpdateConfigField(os.Args[2], strings.Join(os.Args[3:], " "))
+			err = configure.UpdateConfigField(os.Args[2], strings.Join(os.Args[3:], " "))
 			if err != nil {
 				fmt.Println("Error updating config file file:", err)
 				os.Exit(1)
