@@ -12,6 +12,7 @@ type Styles struct {
 	titleStyle  lipgloss.Style
 	promptStyle lipgloss.Style
 	sepStyle    lipgloss.Style
+	infoStyle   lipgloss.Style
 }
 
 func defaultStyles(base_color string) Styles {
@@ -24,12 +25,14 @@ func defaultStyles(base_color string) Styles {
 		Padding(0, 1, 0, 1).
 		Background(lipgloss.Color(base_color)).
 		Foreground(lipgloss.Color(title_text))
-	s.sepStyle = lipgloss.NewStyle().
+	s.promptStyle = lipgloss.NewStyle().Margin(0, 0, 0, 2).Foreground(lipgloss.Color(base_color))
+	s.infoStyle = lipgloss.NewStyle().Margin(0, 0, 0, 2).Foreground(subduedColor)
+	s.sepStyle = s.infoStyle.Copy().
 		BorderStyle(lipgloss.NormalBorder()).
-		BorderBottom(true).
+		Width(32).
+		BorderTop(true).
 		BorderForeground(verySubduedColor).
 		Foreground(subduedColor)
-	s.promptStyle = lipgloss.NewStyle().Margin(0, 0, 0, 2).Foreground(lipgloss.Color(base_color))
 	return s
 }
 
@@ -52,10 +55,15 @@ func (m model) Init() tea.Cmd {
 	return nil
 }
 func (m model) View() string {
+	config_info := lipgloss.JoinVertical(
+		lipgloss.Left,
+		m.renderConfig(),
+		m.renderInfo(),
+	)
 	output := lipgloss.JoinHorizontal(
 		lipgloss.Center,
 		renderBigArt(),
-		m.renderConfig(),
+		config_info,
 	)
 	return lipgloss.Place(
 		m.width,
@@ -121,8 +129,6 @@ func (m model) renderConfig() string {
 	}
 	//print fecth info
 	var lines []string
-	lines = append(lines, m.styles.promptStyle.Render("VERSION: ")+m.config.Version)
-	lines = append(lines, m.styles.sepStyle.Render(m.styles.promptStyle.Render("URL: ")+m.config.Url))
 	lines = append(lines, m.styles.promptStyle.Render("AUTHOR: ")+m.config.Author)
 	lines = append(lines, m.styles.promptStyle.Render("EMAIL: ")+m.config.Email)
 	lines = append(lines, m.styles.promptStyle.Render("WEBSITE: ")+m.config.Website)
@@ -136,7 +142,13 @@ func (m model) renderConfig() string {
 	header := m.styles.titleStyle.Render(`|\| /\ |_|`)
 	return lipgloss.JoinVertical(lipgloss.Center, header, lipgloss.JoinVertical(lipgloss.Left, lines...))
 }
-
+func (m model) renderInfo() string {
+	var sections []string
+	sections = append(sections, m.styles.sepStyle.Render("Version: "+m.config.Version))
+	sections = append(sections, m.styles.infoStyle.Render("Created by Antonio Leitao"))
+	sections = append(sections, m.styles.infoStyle.Render("Url: "+m.config.Url))
+	return lipgloss.JoinVertical(lipgloss.Left, sections...)
+}
 func Home(config utils.Config) {
 
 	m := newModel(config)
