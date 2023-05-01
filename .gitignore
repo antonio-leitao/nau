@@ -3,3 +3,4 @@ Makefile
 /tapes
 dist/
 .env
+**/.DS_Store

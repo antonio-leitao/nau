@@ -58,9 +58,12 @@ func createTemplateProject(sub Submission, config *utils.Config, template string
 		Name:        sub.project_name,
 		Description: sub.description,
 	}
-
-	source_path := config.Templates_path + "/" + template + "_" + config.Templates[template]
-	target_path := config.Projects_path + "/" + template + "/" + sub.folder_name
+	//convert source path
+	source_path, _ := utils.ConvertPath(config.Templates_path)
+	source_path = config.Templates_path + "/" + template + "_" + config.Templates[template]
+	//convert target_path
+	target_path, _ := utils.ConvertPath(config.Projects_path)
+	target_path = target_path + "/" + template + "/" + sub.folder_name
 	//create new direcotry
 	_ = os.MkdirAll(target_path, 0755)
 	//place everything there
@@ -80,7 +83,8 @@ func createTemplateProject(sub Submission, config *utils.Config, template string
 }
 
 func newEmptyProject(sub Submission, config *utils.Config) {
-	target_path := config.Projects_path + "/"
+	target_path, _ := utils.ConvertPath(config.Projects_path)
+	target_path = target_path + "/"
 	err := createEmptyFolder(target_path, sub.folder_name)
 	if err != nil {
 		fmt.Printf("NAU ERROR: Failed to create folder: %v", err)

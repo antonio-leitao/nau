@@ -99,9 +99,18 @@ func (m model) View() string {
 }
 func (m model) Submit() tea.Msg {
 	path := m.list.Submit()
+	// Change to the specified directory
+	if err := os.Chdir(path); err != nil {
+		fmt.Println(err)
+		return tea.Quit()
+	}
+	// Open Neovim
 	cmd := exec.Command(m.editor, path)
-	_ = cmd.Run()
-	return tea.Quit() //this will make program run ad infinitum. Change to tea.Quit()
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Run()
+	return tea.Quit()
 }
 
 // 1 Project

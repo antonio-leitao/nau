@@ -30,12 +30,17 @@ func Open(config utils.Config, query string) {
 		os.Exit(1)
 	}
 
-	//open vscode if something is found
+	//get project path
 	path := projects[candidates[0].Index].Path
-	cmd := exec.Command(config.Editor, path)
-	err := cmd.Run()
-	if err != nil {
+	// Change to the specified directory
+	if err := os.Chdir(path); err != nil {
 		fmt.Println(err)
 		return
 	}
+	// Open Neovim
+	cmd := exec.Command(config.Editor)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Run()
 }

@@ -32,12 +32,12 @@ func DefaultStyles(base_color string) Styles {
 	title_text := "#ffffd7" //230
 	var s Styles
 	s.titleStyle = lipgloss.NewStyle().
-		Margin(3, 1, 1, 0).
+		Margin(3, 0, 2, 0).
 		Padding(0, 1, 0, 1).
 		Background(lipgloss.Color(base_color)).
 		Foreground(lipgloss.Color(title_text))
 
-	s.promptPlace = lipgloss.NewStyle().Margin(0, 0, 0, 1)
+	s.promptPlace = lipgloss.NewStyle().Width(50)
 	s.focusedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(base_color))
 	s.blurredStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
 	s.noStyle = lipgloss.NewStyle()
@@ -105,6 +105,8 @@ type model struct {
 	styles     Styles
 	errors     []string
 	line_width int
+	height     int
+	width      int
 }
 
 func initialModel(base_color string) model {
@@ -152,6 +154,9 @@ func (m model) Init() tea.Cmd {
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, m.keys.Quit):
@@ -249,7 +254,7 @@ func (m model) Submit() tea.Msg {
 	return tea.Quit() //this will make program run ad infinitum. Change to tea.Quit()
 }
 func (m model) getLongestEntry() int {
-	max_len := 0
+	max_len := 0 //minwidth
 	for _, input := range m.inputs {
 		place_len := len(input.input.Placeholder)
 		value_len := len(input.input.Value())
@@ -293,5 +298,11 @@ func (m model) View() string {
 	b.WriteString("\n")
 	b.WriteString(m.help.View(m.keys))
 
-	return b.String()
+	return lipgloss.Place(
+		m.width,
+		m.height,
+		lipgloss.Center,
+		lipgloss.Center,
+		b.String(),
+	)
 }

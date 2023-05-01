@@ -12,6 +12,20 @@ import (
 	"github.com/lucasb-eyer/go-colorful"
 	"github.com/mergestat/timediff"
 )
+type Config struct {
+	Version        string
+	Url            string
+	Author         string
+	Email          string
+	Website        string
+	Remote         string
+	Base_color     string
+	Projects_path  string
+	Templates_path string
+	Archives_path  string
+	Editor         string
+	Templates      map[string]string
+}
 
 // type project
 type Project struct {
@@ -284,18 +298,3 @@ func ConvertPath(path string) (string, error) {
 	return filepath.Abs(expandedPath)
 }
 
-type Config struct {
-	Name           string
-	Version        string
-	Url            string
-	Author         string
-	Email          string
-	Website        string
-	Remote         string
-	Base_color     string
-	Projects_path  string
-	Templates_path string
-	Archives_path  string
-	Editor         string
-	Templates      map[string]string
-}

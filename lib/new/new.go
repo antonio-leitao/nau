@@ -106,6 +106,9 @@ type Model struct {
 	confirmation bool
 	//really just to pass it along
 	config *utils.Config
+	//adaptivsize
+	width  int
+	height int
 }
 
 func newModel(
@@ -177,9 +180,10 @@ func (m Model) Init() tea.Cmd {
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg.(type) {
-	case Finalize:
-		return m, tea.Quit
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
 	}
 	switch m.status {
 	case "choose":
@@ -285,7 +289,7 @@ func (m Model) UpdateConfirm(msg tea.Msg) (tea.Model, tea.Cmd) {
 		//submission
 		case key.Matches(msg, m.KeyMap.Enter):
 			m.status = "waiting"
-			return m, m.Submit
+			return m, m.Submit()
 		case key.Matches(msg, m.KeyMap.Quit):
 			return m, tea.Quit
 		case key.Matches(msg, m.KeyMap.ShowFullHelp):
@@ -325,17 +329,24 @@ func (m Model) View() string {
 		),
 	)
 
+	var output string
 	switch m.status {
 	case "choose":
-		return lipgloss.JoinVertical(lipgloss.Center, header, m.Styles.App.Render(m.ChooseView()))
+		output = lipgloss.JoinVertical(lipgloss.Center, header, m.Styles.App.Render(m.ChooseView()))
 	case "info":
-		return lipgloss.JoinVertical(lipgloss.Center, header, m.Styles.App.Render(m.InfoView()))
+		output = lipgloss.JoinVertical(lipgloss.Center, header, m.Styles.App.Render(m.InfoView()))
 	case "confirm":
-		return lipgloss.JoinVertical(lipgloss.Center, header, m.Styles.App.Render(m.ConfirmView()))
+		output = lipgloss.JoinVertical(lipgloss.Center, header, m.Styles.App.Render(m.ConfirmView()))
 	case "waiting":
-		return lipgloss.JoinVertical(lipgloss.Center, header, m.Styles.App.Render(m.WaitingView()))
+		output = lipgloss.JoinVertical(lipgloss.Center, header, m.Styles.App.Render(m.WaitingView()))
 	}
-	return "Error"
+	return lipgloss.Place(
+		m.width,
+		m.height,
+		lipgloss.Center,
+		lipgloss.Center,
+		output,
+	)
 }
 
 func (m Model) ChooseView() string {
@@ -459,9 +470,7 @@ func (m Model) Validate() {
 	}
 }
 
-type Finalize int
-
-func (m Model) Submit() tea.Msg {
+func (m Model) Submit() tea.Cmd {
 	folder_name := utils.ToFolderName(m.inputs[0].Value())
 	code := strings.ToUpper(m.inputs[1].Value())
 	sub := Submission{
@@ -472,7 +481,7 @@ func (m Model) Submit() tea.Msg {
 		git:          m.confirmation,
 	}
 	createNewProject(sub, m.config, m.template)
-	return Finalize(0)
+	return tea.Quit
 }
 
 func (m Model) forceBounds() (tea.Model, tea.Cmd) {

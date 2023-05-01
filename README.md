@@ -1,12 +1,15 @@
 # NAU 
 The side-project manager you didn't know you needed.
+<p align="center">
+<img alt="NAU demo" src="assets/home.png" width="600" />
+</p>
 # Installation
 ```bash
 # macOS or Linux
 brew tap antonio-leitao/taps
 brew install nau
 ```
-## Getting Started 
+# Getting Started 
 NAU allows you to store permanent variables such as your name, email and website for automatically adding in projects.
 It also requires you to supply a directory where to store your Projects, where your Templates are and where you want to store your Archives.
 The default configuration fields are the following:
@@ -26,7 +29,7 @@ You can setup all variables by running
 nau config
 ```
 <p align="center">
-<img alt="NAU demo" src="assets/init.gif" width="600" />
+<img alt="NAU demo" src="assets/config.gif" width="600" />
 </p>
 
 Otherwise you can simply change specific fields aat any time by running:
@@ -45,37 +48,29 @@ Below are all available fields with their explanations:
 - `TEMPLATES_PATH`: Path to where your templates reside (see more in the Templates section)
 - `ARCHIVES_PATH`: Where should NAU place archived projects (see more on the `archive` command)
 You can also manually configure NAU through the file `.naurc` in your root directory
-## Commands
+# Commands
 
 NAU is built to be modular. Imagine a Makefile but for you computer. Currently is is aimed at managing your projects. Currently has these commands implemented
 
-### Home 
-Opens a specific project. Currently calls VSCode.
-```shell
-nau open 
-```
-Launches NAU's homescreen. Which is a persistent UI for visualizing your projects, ordered by recent changes. Selecting a project opens it. The UI is persistent: the application will not quit unlike the other commands.
-
-<p align="center">
-<img alt="NAU demo" src="assets/nau.gif" width="600" />
-</p>
-### Open
-Opens a specific project. Currently calls VSCode.
+### Open 
+Opens a specific project using specified `editor`, default is `neovim`.
 ```shell
 nau open <project>
 ```
 If `project` is specified attemps to open best match of all your projects. If it is not specified it prompts the user to choose which project to open. Projects are always listed according to most recently changed.
+<p align="center">
+<img alt="NAU demo" src="assets/open_project.gif" width="600" />
+</p>
 
-### Start
-Loads a template and prompts the user for information in order to create a new instance.
+### New
+Creates a new project either empty or from a prebuilt `nau` template. 
+If `template` is specified will prompt the user for information in order to create a new project from the specified template. If it is not specified will prompt the user to choose which template to load.
 ```shell
 nau new <template>
 ```
 <p align="center">
 <img alt="NAU demo" src="assets/new.gif" width="600" />
 </p>
-
-If `template` is specified will prompt the user for information in order to create a new project from the specified template. If it is not specified will prompt the user to choose which template to load.
 
 ### Archive
 Cleans and compresses specific project. Moves to `Archives` directory.
@@ -84,8 +79,10 @@ nau archive <project>
 ```
 If `project` is specified will run `make archive` before compressing and moving it to `Archives` directory. If it is not specified will prompt user to choose which one. Ordered in reverse order of last modified.
 
-## Templates
-Nau relies on understanding what type are your projects. Each project either comes from a template or it doesnt. The template directory is stored in `config.Templates_path` and should look like this:
+# Templates
+Nau relies on understanding what type are your projects. Each project either comes from a template or it doesnt.
+### Template Direcory
+Check the [`nau-templates`] repository for an example of a direcotry of templates. The template directory is stored in `config.Templates_path` and should look like this:
 ```text
 templates
 │   Python_#3776AB
@@ -102,4 +99,8 @@ projects
 └───Rust
 │   │   IDX_RustProject
 ```
+### `.nau` file
+Each template should have a now file that specified which files are templated and have to be collapsed.
 
+### `make init`
+After collapsing the template `nau` will attempt to run the Makefile command `make init` this is usefull to initiate any template specific environments such as node or conda.

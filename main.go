@@ -17,10 +17,9 @@ import (
 // read naurc file and ouput configuration, default if it doesn exist
 func readConfig() (utils.Config, error) {
 	defaultConfig := utils.Config{
-		Name:           "NAU",
-		Version:        "0.1.0",
-		Author:         "Antonio Leitao",
+		Version: "v0.1.2",
 		Url:            "https://github.com/antonio-leitao/nau",
+		Author:         "Antonio Leitao",
 		Website:        "https://antonio-leitao.github.io",
 		Email:          "aleitao@novaims.unl.pt",
 		Remote:         "https://github.com/antonio-leitao",
