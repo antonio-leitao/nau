@@ -3,7 +3,9 @@ The side-project manager you didn't know you needed.
 <p align="center">
 <img alt="NAU demo" src="assets/home.png" width="600" />
 </p>
+
 # Installation
+
 ```bash
 # macOS or Linux
 brew tap antonio-leitao/taps
