@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	todo "github.com/antonio-leitao/nau/lib/todo"
 	archive "github.com/antonio-leitao/nau/lib/archive"
 	configure "github.com/antonio-leitao/nau/lib/configure"
 	home "github.com/antonio-leitao/nau/lib/home"
@@ -126,6 +127,16 @@ func main() {
 		}
 		open.Open(config, os.Args[2])
 		os.Exit(0)
+	case "todo":
+		todo.Todo(config)
+		os.Exit(0)
+	case "todos":
+		if len(os.Args) < 3 {
+            //show all todos
+			open.Expand(config)
+		}
+        //else find match and show
+		open.Open(config, os.Args[2])
 	case "new":
 		if len(os.Args) < 3 {
 			new.New(config, "")

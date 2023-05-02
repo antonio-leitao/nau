@@ -74,6 +74,20 @@ nau new <template>
 <img alt="NAU demo" src="assets/new.gif" width="600" />
 </p>
 
+### Todo
+Saves memos and snipped associated to a project
+
+```shell
+nau todo <memo>
+```
+Adds a new todo to the list.
+
+```shell
+nau todos <query>
+```
+Show a list of all memos that match `query`. It uses `ripgrep` under the hood so make sure to have installed and available in your `PATH`.
+If no `query` is provided then it shows all recoded memos.
+
 ### Archive
 Cleans and compresses specific project. Moves to `Archives` directory.
 ```shell
