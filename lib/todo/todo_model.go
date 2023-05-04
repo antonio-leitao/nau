@@ -44,31 +44,33 @@ var DefaultKeyMap = KeyMap{
 
 type Styles struct {
 	HelpStyle lipgloss.Style
+	AreaStyle lipgloss.Style
 }
 
 func DefaultStyle() Styles {
 	var s Styles
 	s.HelpStyle = lipgloss.NewStyle().Padding(1, 0, 0, 2)
+	s.AreaStyle = lipgloss.NewStyle().Margin(1, 0, 0, 1)
 	return s
 }
 
 type TodoModel struct {
-	memo   textarea.Model
-    aborted bool
-    quitting bool
-	KeyMap KeyMap
-	Help   help.Model
-	styles Styles
+	memo     textarea.Model
+	aborted  bool
+	quitting bool
+	KeyMap   KeyMap
+	Help     help.Model
+	styles   Styles
 }
 
 func initialTodoModel() TodoModel {
 	m := TodoModel{
-		memo:   textarea.New(),
-        aborted: false,
-        quitting: false,
-		KeyMap: DefaultKeyMap,
-		Help:   help.New(),
-		styles: DefaultStyle(),
+		memo:     textarea.New(),
+		aborted:  false,
+		quitting: false,
+		KeyMap:   DefaultKeyMap,
+		Help:     help.New(),
+		styles:   DefaultStyle(),
 	}
 	m.memo.Placeholder = "XXX: next todo"
 	m.memo.ShowLineNumbers = false
@@ -88,10 +90,10 @@ func (m TodoModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, m.KeyMap.Submit):
 			//validate and submit
-            m.quitting = true
-            return m, m.Submit()
+			m.quitting = true
+			return m, m.Submit()
 		case key.Matches(msg, m.KeyMap.Quit):
-            m.aborted = true
+			m.aborted = true
 			m.quitting = true
 			return m, tea.Quit
 		case key.Matches(msg, m.KeyMap.ShowFullHelp):
@@ -105,12 +107,12 @@ func (m TodoModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m TodoModel) View() string {
-    if m.quitting{
+	if m.quitting {
 		return ""
 	}
 
 	var sections []string
-	sections = append(sections, m.memo.View())
+	sections = append(sections, m.styles.AreaStyle.Render(m.memo.View()))
 	sections = append(sections, m.helpView())
 	return lipgloss.JoinVertical(lipgloss.Left, sections...)
 

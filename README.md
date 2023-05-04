@@ -14,18 +14,6 @@ brew install nau
 # Getting Started 
 NAU allows you to store permanent variables such as your name, email and website for automatically adding in projects.
 It also requires you to supply a directory where to store your Projects, where your Templates are and where you want to store your Archives.
-The default configuration fields are the following:
-```text
-AUTHOR=         Antonio Leitao
-WEBSITE=        https://antonio-leitao.github.io
-EMAIL=          aleitao@novaims.unl.pt
-REMOTE=         https://github.com/antonio-leitao
-BASE_COLOR=     #814584
-EDITOR=         nvim
-PROJECTS_PATH=  /Documents/Projects
-TEMPLATES_PATH= /Documents/Templates
-ARCHIVES_PATH=  /Documents/Archives
-```
 You can setup all variables by running
 ```shell
 nau config
@@ -50,12 +38,21 @@ Below are all available fields with their explanations:
 - `TEMPLATES_PATH`: Path to where your templates reside (see more in the Templates section)
 - `ARCHIVES_PATH`: Where should NAU place archived projects (see more on the `archive` command)
 You can also manually configure NAU through the file `.naurc` in your root directory
+To view your current configuration just run
+
+```shell
+nau
+```
 # Commands
 
-NAU is built to be modular. Imagine a Makefile but for you computer. Currently is is aimed at managing your projects. Currently has these commands implemented
+NAU is built to be modular. Imagine a Makefile but for you computer. Is is aimed at managing your projects. Currently has these commands implemented
 
 ### Open 
 Opens a specific project using specified `editor`, default is `neovim`.
+
+> **Note**
+> `nau` will run `make open` command on the directory. You can add/edit this makefile command to enable further customization. 
+
 ```shell
 nau open <project>
 ```
@@ -67,6 +64,10 @@ If `project` is specified attemps to open best match of all your projects. If it
 ### New
 Creates a new project either empty or from a prebuilt `nau` template. 
 If `template` is specified will prompt the user for information in order to create a new project from the specified template. If it is not specified will prompt the user to choose which template to load.
+
+> **Note**
+> `nau` will run `make new` command on the directtory after the template is collapsed. You can add/edit this makefile command to enable further customization. 
+
 ```shell
 nau new <template>
 ```
@@ -74,22 +75,26 @@ nau new <template>
 <img alt="NAU demo" src="assets/new.gif" width="600" />
 </p>
 
-### Todo
-Saves memos and snipped associated to a project
+### Memo
+Stores and organizes miscellaneous memos.
 
 ```shell
-nau todo <memo>
+nau memo 
 ```
-Adds a new todo to the list.
+Creates a new memo.
 
 ```shell
-nau todos <query>
+nau memos <query>
 ```
-Show a list of all memos that match `query`. It uses `ripgrep` under the hood so make sure to have installed and available in your `PATH`.
-If no `query` is provided then it shows all recoded memos.
+Allows you to see iteractivelly all your memos. You can also select, filter and delete.
+If a `query` starts the list already with the filter applied.
 
 ### Archive
 Cleans and compresses specific project. Moves to `Archives` directory.
+
+> **Note**
+> `nau` will run `make archive` command on the directory before the project is archived. You can add/edit this makefile command to enable further customization. 
+
 ```shell
 nau archive <project>
 ```
