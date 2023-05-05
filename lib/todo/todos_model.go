@@ -2,7 +2,6 @@ package todo
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -12,7 +11,6 @@ import (
 )
 
 // FilterState describes the current filtering state on the model.
-
 type FilterState int
 
 // Possible filter states.
@@ -22,12 +20,16 @@ const (
 	FilterApplied                    // a filter is applied and user is not editing filter
 )
 
-// possible filter states.
 const (
 	bullet   = "•"
 	ellipsis = "…"
 )
 
+type Paginator struct {
+	n_pages      int
+	current_page int
+	pages        [][]Memo
+}
 type Keys struct {
 	// Keybindings used when browsing the list.
 	CursorUp    key.Binding
@@ -120,11 +122,6 @@ func DefaultKeys() Keys {
 	}
 }
 
-type Paginator struct {
-	n_pages      int
-	current_page int
-	pages        [][]Memo
-}
 type Style struct {
 	Title                 lipgloss.Style
 	FilterPrompt          lipgloss.Style
@@ -133,6 +130,7 @@ type Style struct {
 	ActivePaginationDot   lipgloss.Style
 	InactivePaginationDot lipgloss.Style
 	HelpStyle             lipgloss.Style
+	Content               lipgloss.Style
 }
 
 // Model contains the state of this component.
@@ -144,15 +142,16 @@ type Model struct {
 	KeyMap Keys
 	// Filter is used to filter the list.
 	width         int
+	maxWidth      int
 	height        int
 	contentHeight int
 	cursor        int
 	Help          help.Model
 	FilterInput   textinput.Model
-    filterState FilterState
+	filterState   FilterState
+	paginator     Paginator
 	// The master set of items we're working with.
-	items     []Memo
-	paginator Paginator
+	items []Memo
 }
 
 // New returns a new model with sensible defaults.
@@ -166,20 +165,22 @@ func New(items []Memo, query string, base_color string) Model {
 	filterInput.CharLimit = 64
 	filterInput.Focus()
 	//handle current filter
-
 	m := Model{
 		showHelp:    true,
 		KeyMap:      DefaultKeys(),
 		Styles:      styles,
 		Title:       "List",
 		FilterInput: filterInput,
+		filterState: Unfiltered,
 		items:       items,
 		Help:        help.New(),
-        filterState: Unfiltered,
+		width:       50,
+		cursor:      0,
 	}
-	m.updatePaginator()
-
+	m.Styles.Content = lipgloss.NewStyle().Width(m.width)
 	//update pagination
+	m.updateHeight()
+	m.updatePaginator()
 	return m
 }
 func newDefaultStyle(base_color string) Style {
@@ -189,8 +190,9 @@ func newDefaultStyle(base_color string) Style {
 	s.Title = lipgloss.NewStyle().
 		Background(lipgloss.Color("62")).
 		Foreground(lipgloss.Color("230")).
+		Margin(2, 0, 0, 0).
 		Padding(0, 1)
-	s.Status = lipgloss.NewStyle().Foreground(subduedColor)
+	s.Status = lipgloss.NewStyle().Foreground(subduedColor).Margin(1, 0)
 	s.ActivePaginationDot = lipgloss.NewStyle().
 		Foreground(subduedColor).
 		SetString(bullet)
@@ -199,6 +201,15 @@ func newDefaultStyle(base_color string) Style {
 		Foreground(verySubduedColor).
 		SetString(bullet)
 	s.HelpStyle = lipgloss.NewStyle().Padding(1, 0, 0, 2)
+	s.ActivePaginationDot = lipgloss.NewStyle().
+		Foreground(lipgloss.AdaptiveColor{Light: "#847A85", Dark: "#979797"}).
+		MarginTop(1).
+		SetString(bullet)
+
+	s.InactivePaginationDot = lipgloss.NewStyle().
+		Foreground(verySubduedColor).
+		MarginTop(1).
+		SetString(bullet)
 	return s
 }
 func (m Model) Init() tea.Cmd {
@@ -213,15 +224,56 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case tea.WindowSizeMsg:
 		m.height = msg.Height
-		m.width = msg.Width
+		m.maxWidth = msg.Width
 		m.updateHeight()
+		m.updatePaginator()
 	}
 	cmds = append(cmds, m.handleBrowsing(msg))
-
 	return m, tea.Batch(cmds...)
 }
 
-// Updates for when a user is browsing the list.
+func (m Model) View() string {
+	var sections []string
+	sections = append(sections, m.titleView())
+	sections = append(sections, m.statusView())
+	// sections = append(sections, m.Styles.Content.Render(m.contentView()))
+	//maybe joing paginator and help centrally
+	sections = append(
+		sections,
+		lipgloss.JoinVertical(lipgloss.Center, m.contentView(), m.paginatorView()),
+	)
+	sections = append(sections, m.helpView())
+	return lipgloss.Place(
+		m.maxWidth,
+		m.height,
+		lipgloss.Center,
+		lipgloss.Center, lipgloss.JoinVertical(lipgloss.Left, sections...))
+}
+func (m Model) titleView() string {
+	return m.Styles.Title.Render("Memos")
+}
+func (m Model) statusView() string {
+	return m.Styles.Status.Render(fmt.Sprintf("%d memos", len(m.items)))
+}
+func (m Model) contentView() string {
+	//fill rest of the height with empty lines
+	var (
+		sections     []string
+		excessHeight = m.contentHeight
+	)
+	for i, memo := range m.items {
+		memoView := memo.RenderSelected(m.width)
+		if m.cursor == i {
+			memoView = memo.Render(m.width)
+		}
+		excessHeight -= lipgloss.Height(memoView)
+		//add excess height
+		sections = append(sections, memoView)
+	}
+	// sections = append(sections, strings.Repeat("\n", excessHeight))
+	return lipgloss.JoinVertical(lipgloss.Left, sections...)
+}
+
 func (m *Model) handleBrowsing(msg tea.Msg) tea.Cmd {
 	var cmds []tea.Cmd
 
@@ -230,8 +282,8 @@ func (m *Model) handleBrowsing(msg tea.Msg) tea.Cmd {
 		switch {
 		// Note: we match clear filter before quit because, by default, they're
 		// both mapped to escape.
-		//case key.Matches(msg, m.KeyMap.ClearFilter):
-		//	m.resetFiltering()
+		// case key.Matches(msg, m.KeyMap.ClearFilter):
+		// 	m.resetFiltering()
 
 		case key.Matches(msg, m.KeyMap.Quit):
 			return tea.Quit
@@ -242,96 +294,58 @@ func (m *Model) handleBrowsing(msg tea.Msg) tea.Cmd {
 		case key.Matches(msg, m.KeyMap.CursorDown):
 			m.CursorDown()
 
-		case key.Matches(msg, m.KeyMap.PrevPage):
-			m.paginator.PrevPage()
-
-		case key.Matches(msg, m.KeyMap.NextPage):
-			m.paginator.NextPage()
-
-		case key.Matches(msg, m.KeyMap.GoToStart):
-			m.paginator.current_page = 0
-			m.cursor = 0
-
-		case key.Matches(msg, m.KeyMap.GoToEnd):
-			m.paginator.current_page = m.paginator.n_pages - 1
-			m.cursor = m.paginator.ItemsOnPage() - 1
-
-		//case key.Matches(msg, m.KeyMap.Filter):
-		//	m.hideStatusMessage()
-		//	if m.FilterInput.Value() == "" {
-		//		// Populate filter with all items only if the filter is empty.
-		//		m.filteredItems = m.itemsAsFilterItems()
-		//	}
-		//	m.Paginator.Page = 0
-		//	m.cursor = 0
-		//	m.filterState = Filtering
-		//	m.FilterInput.CursorEnd()
-		//	m.FilterInput.Focus()
-		//	m.updateKeybindings()
-		//	return textinput.Blink
+		// case key.Matches(msg, m.KeyMap.PrevPage):
+		// 	m.Paginator.PrevPage()
+		//
+		// case key.Matches(msg, m.KeyMap.NextPage):
+		// 	m.Paginator.NextPage()
+		//
+		// case key.Matches(msg, m.KeyMap.GoToStart):
+		// 	m.Paginator.Page = 0
+		// 	m.cursor = 0
+		//
+		// case key.Matches(msg, m.KeyMap.GoToEnd):
+		// 	m.Paginator.Page = m.Paginator.TotalPages - 1
+		// 	m.cursor = m.Paginator.ItemsOnPage(numItems) - 1
+		//
+		// case key.Matches(msg, m.KeyMap.Filter):
+		// 	m.hideStatusMessage()
+		// 	if m.FilterInput.Value() == "" {
+		// 		// Populate filter with all items only if the filter is empty.
+		// 		m.filteredItems = m.itemsAsFilterItems()
+		// 	}
+		// 	m.Paginator.Page = 0
+		// 	m.cursor = 0
+		// 	m.filterState = Filtering
+		// 	m.FilterInput.CursorEnd()
+		// 	m.FilterInput.Focus()
+		// 	m.updateKeybindings()
+		// 	return textinput.Blink
 
 		case key.Matches(msg, m.KeyMap.ShowFullHelp):
 			fallthrough
 		case key.Matches(msg, m.KeyMap.CloseFullHelp):
 			m.Help.ShowAll = !m.Help.ShowAll
+			// m.updatePagination()
 		}
 	}
-
 	return tea.Batch(cmds...)
 }
-func (m Model) View() string {
-	var sections []string
-	sections = append(sections, m.titleView())
-	sections = append(sections, m.statusView())
-	sections = append(sections, m.contentView())
-	//maybe joing paginator and help centrally
-	sections = append(sections, m.paginatorView())
-	sections = append(sections, m.helpView())
-	return lipgloss.JoinVertical(lipgloss.Left, sections...)
-}
-func (m Model) titleView() string {
 
-	return m.Styles.Title.Render("Memos")
+func (m Model) helpView() string {
+	return m.Styles.Content.Render(m.Styles.HelpStyle.Render(m.Help.View(m)))
 }
-func (m Model) statusView() string {
-	m.Styles.Status.Render(fmt.Sprintf("%d memos", m.paginator.ItemsOnPage()))
-	return ""
-}
-func (m Model) contentView() string {
-	//fill rest of the height with empty lines
-	var (
-		sections     []string
-		excessHeight = m.contentHeight
-	)
-	for i, memo := range m.paginator.pages[m.paginator.current_page] {
-		var memoView string
-		if m.cursor == i {
-			memoView = memo.RenderSelected(m.width)
-		} else {
-			memoView = memo.Render(m.width)
-		}
-		//add excess height
-		excessHeight -= lipgloss.Height(memoView)
-		sections = append(sections, memoView)
-	}
-	//we gotta fill the excess height with empty strings
-	sections = append(sections, strings.Repeat("\n", excessHeight))
-	return lipgloss.JoinVertical(lipgloss.Center, sections...)
-}
+
 func (m Model) paginatorView() string {
-
-	var sections []string
+	var dots []string
 	for i := 0; i < m.paginator.n_pages; i++ {
 		if i == m.paginator.current_page {
-			sections = append(sections, m.Styles.ActivePaginationDot.String())
+			dots = append(dots, m.Styles.ActivePaginationDot.String())
 		} else {
-			sections = append(sections, m.Styles.InactivePaginationDot.String())
+			dots = append(dots, m.Styles.InactivePaginationDot.String())
 		}
 	}
-	return lipgloss.JoinHorizontal(lipgloss.Center, sections...)
-}
-func (m Model) helpView() string {
-	return m.Styles.HelpStyle.Render(m.Help.View(m))
+	return lipgloss.JoinHorizontal(lipgloss.Center, dots...)
 }
 
 func (m *Model) updateHeight() {
@@ -416,8 +430,8 @@ func (m Model) ShortHelp() []key.Binding {
 	)
 }
 
-// FullHelp returns bindings to show the full help view. It's part of the
-// help.KeyMap interface.
+// // FullHelp returns bindings to show the full help view. It's part of the
+// // help.KeyMap interface.
 func (m Model) FullHelp() [][]key.Binding {
 	kb := [][]key.Binding{{
 		m.KeyMap.CursorUp,
@@ -442,7 +456,6 @@ func (m Model) FullHelp() [][]key.Binding {
 			m.KeyMap.CloseFullHelp,
 		})
 }
-
 func (m *Model) updatePaginator() {
 	var sublists [][]Memo
 	var currentList []Memo

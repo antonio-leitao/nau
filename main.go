@@ -6,19 +6,19 @@ import (
 	"os"
 	"strings"
 
-	todo "github.com/antonio-leitao/nau/lib/todo"
 	archive "github.com/antonio-leitao/nau/lib/archive"
 	configure "github.com/antonio-leitao/nau/lib/configure"
 	home "github.com/antonio-leitao/nau/lib/home"
 	new "github.com/antonio-leitao/nau/lib/new"
 	open "github.com/antonio-leitao/nau/lib/open"
+	todo "github.com/antonio-leitao/nau/lib/todo"
 	utils "github.com/antonio-leitao/nau/lib/utils"
 )
 
 // read naurc file and ouput configuration, default if it doesn exist
 func readConfig() (utils.Config, error) {
 	defaultConfig := utils.Config{
-		Version: "v0.1.2",
+		Version:        "v0.1.2",
 		Url:            "https://github.com/antonio-leitao/nau",
 		Author:         "Antonio Leitao",
 		Website:        "https://antonio-leitao.github.io",
@@ -124,7 +124,7 @@ func main() {
 	case "open":
 		if len(os.Args) < 3 {
 			open.Expand(config)
-            os.Exit(0)
+			os.Exit(0)
 		}
 		open.Open(config, os.Args[2])
 		os.Exit(0)
@@ -133,11 +133,13 @@ func main() {
 		os.Exit(0)
 	case "todos":
 		if len(os.Args) < 3 {
-            //show all todos
-			open.Expand(config)
+			//show all todos
+			todo.Todos(config, "")
+			os.Exit(0)
 		}
-        //else find match and show
-		open.Open(config, os.Args[2])
+		//else find match and show
+		todo.Todos(config, os.Args[2])
+		os.Exit(0)
 	case "new":
 		if len(os.Args) < 3 {
 			new.New(config, "")

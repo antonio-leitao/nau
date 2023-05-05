@@ -31,11 +31,11 @@ func parseMemoString(s string) Memo {
 		title = matches[2]
 	}
 
-	return Memo{Title: title, Description: description}
+    return Memo{Title: title, Description: description, Style: NewDefaultItemStyles()}
 }
 func readTodosFile() ([]Memo, error) {
 	//open todo file and parse memos.
-	filePath := ".nau/todos"
+	filePath,_ := utils.ConvertPath(".nau/todos")
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
