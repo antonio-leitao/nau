@@ -19,6 +19,8 @@ type Styles struct {
 }
 
 var (
+	exitState        string
+	targetPath       string
 	verySubduedColor = lipgloss.AdaptiveColor{Light: "#DDDADA", Dark: "#3C3C3C"}
 	subduedColor     = lipgloss.AdaptiveColor{Light: "#9B9B9B", Dark: "#5C5C5C"}
 	highlight        = lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "#7D56F4"}
@@ -49,7 +51,6 @@ type model struct {
 	templates  []string
 	base_color string
 	editor     string
-	done       bool
 	paths      string
 }
 
@@ -69,11 +70,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		if msg.String() == "ctrl+c" {
+			exitState = "aborted"
 			return m, tea.Quit
 		}
 		if msg.String() == "enter" && m.list.FilterState() != list.Filtering {
-			m.done = true
-			return m, m.Submit
+			exitState = "success"
+			targetPath = m.list.Submit() //mega convoluted way to get info out of loop
+			return m, tea.Quit
 		}
 	case tea.WindowSizeMsg:
 		//	h, v := docStyle.GetFrameSize()
@@ -97,28 +100,13 @@ func (m model) View() string {
 		lipgloss.Center,
 		lipgloss.Center, lipgloss.JoinVertical(lipgloss.Center, sections...))
 }
-func (m model) Submit() tea.Msg {
-	path := m.list.Submit()
-	// Change to the specified directory
-	if err := os.Chdir(path); err != nil {
-		fmt.Println(err)
-		return tea.Quit()
-	}
-	// Open Neovim
-	cmd := exec.Command(m.editor, path)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Run()
-	return tea.Quit()
-}
 
 // 1 Project
 func Expand(config utils.Config) {
 	//Run open and open project
 	projects, err := utils.GetProjects(config)
 	if err != nil {
-		fmt.Println("Home error:", err)
+		fmt.Println("Open error:", err)
 		os.Exit(1)
 	}
 
@@ -143,7 +131,6 @@ func Expand(config utils.Config) {
 	m := model{
 		list_width: 50,
 		editor:     config.Editor,
-		done:       false,
 		templates:  keys,
 		base_color: config.Base_color,
 		list:       list.New(items, delegate, 0, 0),
@@ -152,10 +139,20 @@ func Expand(config utils.Config) {
 	m.list.Styles.Title.Background(lipgloss.Color(config.Base_color))
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
-
 	if _, err := p.Run(); err != nil {
 		fmt.Println("Error running program:", err)
 		os.Exit(1)
 	}
-
+    if exitState == "success"{
+        if err := os.Chdir(targetPath); err != nil {
+            fmt.Println(err)
+            return
+        }
+        // Open Neovim
+        cmd := exec.Command(config.Editor)
+        cmd.Stdin = os.Stdin
+        cmd.Stdout = os.Stdout
+        cmd.Stderr = os.Stderr
+        cmd.Run()
+    }
 }

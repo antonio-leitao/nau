@@ -8,7 +8,6 @@ import (
 	"os"
 	"regexp"
 	"strings"
-	"github.com/charmbracelet/lipgloss"
 )
 
 func Todo(config utils.Config) {
@@ -61,11 +60,11 @@ func Todos(config utils.Config, query string) {
 	memos, err := readTodosFile()
 	if err != nil {
 		fmt.Println(err)
-        fmt.Printf("could not read Todos: %s\n", err)
+		fmt.Printf("could not read Todos: %s\n", err)
 		os.Exit(1)
 	}
 	//separate into queried and not
-	model := newModel(
+	model := New(
 		memos, query, config.Base_color,
 	)
 	if _, err := tea.NewProgram(model, tea.WithAltScreen()).Run(); err != nil {

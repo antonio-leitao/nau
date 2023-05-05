@@ -124,6 +124,7 @@ func main() {
 	case "open":
 		if len(os.Args) < 3 {
 			open.Expand(config)
+            os.Exit(0)
 		}
 		open.Open(config, os.Args[2])
 		os.Exit(0)

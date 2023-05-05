@@ -12,6 +12,7 @@ import (
 )
 
 // FilterState describes the current filtering state on the model.
+
 type FilterState int
 
 // Possible filter states.
@@ -19,8 +20,12 @@ const (
 	Unfiltered    FilterState = iota // no filter set
 	Filtering                        // user is actively setting a filter
 	FilterApplied                    // a filter is applied and user is not editing filter
-	bullet        = "•"
-	ellipsis      = "…"
+)
+
+// possible filter states.
+const (
+	bullet   = "•"
+	ellipsis = "…"
 )
 
 type Keys struct {
@@ -144,7 +149,7 @@ type Model struct {
 	cursor        int
 	Help          help.Model
 	FilterInput   textinput.Model
-	filterState   FilterState
+    filterState FilterState
 	// The master set of items we're working with.
 	items     []Memo
 	paginator Paginator
@@ -170,7 +175,7 @@ func New(items []Memo, query string, base_color string) Model {
 		FilterInput: filterInput,
 		items:       items,
 		Help:        help.New(),
-		filterState: Unfiltered,
+        filterState: Unfiltered,
 	}
 	m.updatePaginator()
 
@@ -219,7 +224,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // Updates for when a user is browsing the list.
 func (m *Model) handleBrowsing(msg tea.Msg) tea.Cmd {
 	var cmds []tea.Cmd
-	numItems := m.paginator.ItemsOnPage()
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
