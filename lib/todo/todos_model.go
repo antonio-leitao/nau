@@ -190,9 +190,9 @@ func newDefaultStyle(base_color string) Style {
 	s.Title = lipgloss.NewStyle().
 		Background(lipgloss.Color("62")).
 		Foreground(lipgloss.Color("230")).
-		Margin(2, 0, 0, 0).
+		Margin(2, 0, 1, 0).
 		Padding(0, 1)
-	s.Status = lipgloss.NewStyle().Foreground(subduedColor).Margin(1, 0)
+	s.Status = lipgloss.NewStyle().Foreground(subduedColor)
 	s.ActivePaginationDot = lipgloss.NewStyle().
 		Foreground(subduedColor).
 		SetString(bullet)
@@ -261,7 +261,7 @@ func (m Model) contentView() string {
 		sections     []string
 		excessHeight = m.contentHeight
 	)
-	for i, memo := range m.items {
+	for i, memo := range m.paginator.pages[m.paginator.current_page] {
 		memoView := memo.RenderSelected(m.width)
 		if m.cursor == i {
 			memoView = memo.Render(m.width)
@@ -294,19 +294,19 @@ func (m *Model) handleBrowsing(msg tea.Msg) tea.Cmd {
 		case key.Matches(msg, m.KeyMap.CursorDown):
 			m.CursorDown()
 
-		// case key.Matches(msg, m.KeyMap.PrevPage):
-		// 	m.Paginator.PrevPage()
-		//
-		// case key.Matches(msg, m.KeyMap.NextPage):
-		// 	m.Paginator.NextPage()
-		//
-		// case key.Matches(msg, m.KeyMap.GoToStart):
-		// 	m.Paginator.Page = 0
-		// 	m.cursor = 0
-		//
-		// case key.Matches(msg, m.KeyMap.GoToEnd):
-		// 	m.Paginator.Page = m.Paginator.TotalPages - 1
-		// 	m.cursor = m.Paginator.ItemsOnPage(numItems) - 1
+		case key.Matches(msg, m.KeyMap.PrevPage):
+			m.paginator.PrevPage()
+
+		case key.Matches(msg, m.KeyMap.NextPage):
+			m.paginator.NextPage()
+
+		case key.Matches(msg, m.KeyMap.GoToStart):
+			m.paginator.current_page = 0
+			m.cursor = 0
+
+		case key.Matches(msg, m.KeyMap.GoToEnd):
+			m.paginator.current_page = m.paginator.n_pages - 1
+			m.cursor = m.paginator.ItemsOnPage() - 1
 		//
 		// case key.Matches(msg, m.KeyMap.Filter):
 		// 	m.hideStatusMessage()

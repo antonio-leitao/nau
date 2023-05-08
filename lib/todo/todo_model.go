@@ -90,8 +90,7 @@ func (m TodoModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, m.KeyMap.Submit):
 			//validate and submit
-			m.quitting = true
-			return m, m.Submit()
+			m.Submit()
 		case key.Matches(msg, m.KeyMap.Quit):
 			m.aborted = true
 			m.quitting = true
@@ -128,7 +127,7 @@ func (m TodoModel) FullHelp() [][]key.Binding {
 	kb := [][]key.Binding{
 		{m.KeyMap.Submit},
 		{m.KeyMap.Quit},
-		{m.KeyMap.CloseFullHelp},
+		{m.KeyMap.ShowFullHelp},
 	}
 	return kb
 }
@@ -147,23 +146,20 @@ func (m *TodoModel) updateInputs(msg tea.Msg) tea.Cmd {
 	m.memo, cmd = m.memo.Update(msg)
 	return cmd
 }
-func (m TodoModel) Submit() tea.Cmd {
-
+func (m *TodoModel) Submit() {
+	//writes memo to file
 	memo := m.memo.Value()
 	// Remove line breaks from input string
 	item := strings.ReplaceAll(memo, "\n", "")
-
 	// Create path to the .nau/todos file
 	homeDir, _ := os.UserHomeDir()
 	todosDir := filepath.Join(homeDir, ".nau")
 	_ = os.MkdirAll(todosDir, 0700)
 	todosFile := filepath.Join(todosDir, "todos")
-
 	// Open the file for writing
 	f, _ := os.OpenFile(todosFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	defer f.Close()
-
 	// Write the item to the file
 	_, _ = fmt.Fprintln(f, item)
-	return tea.Quit
+	m.memo.SetValue("")
 }

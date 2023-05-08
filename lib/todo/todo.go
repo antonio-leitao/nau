@@ -11,12 +11,14 @@ import (
 )
 
 func Todo(config utils.Config) {
+	//initialize at least once
 	//add the new todo to the file
 	model := initialTodoModel()
 	if _, err := tea.NewProgram(model).Run(); err != nil {
 		fmt.Printf("could not start program: %s\n", err)
 		os.Exit(1)
 	}
+
 }
 
 // ----------READING AND DELETING TODOS---------------------
@@ -31,11 +33,11 @@ func parseMemoString(s string) Memo {
 		title = matches[2]
 	}
 
-    return Memo{Title: title, Description: description, Style: NewDefaultItemStyles()}
+	return Memo{Title: title, Description: description, Style: NewDefaultItemStyles()}
 }
 func readTodosFile() ([]Memo, error) {
 	//open todo file and parse memos.
-	filePath,_ := utils.ConvertPath(".nau/todos")
+	filePath, _ := utils.ConvertPath(".nau/todos")
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
