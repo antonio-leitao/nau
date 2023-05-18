@@ -11,7 +11,6 @@ import (
 	home "github.com/antonio-leitao/nau/lib/home"
 	new "github.com/antonio-leitao/nau/lib/new"
 	open "github.com/antonio-leitao/nau/lib/open"
-	todo "github.com/antonio-leitao/nau/lib/todo"
 	utils "github.com/antonio-leitao/nau/lib/utils"
 )
 
@@ -128,17 +127,8 @@ func main() {
 		}
 		open.Open(config, os.Args[2])
 		os.Exit(0)
-	case "todo":
-		todo.Todo(config)
-		os.Exit(0)
-	case "todos":
-		if len(os.Args) < 3 {
-			//show all todos
-			todo.Todos(config, "")
-			os.Exit(0)
-		}
-		//else find match and show
-		todo.Todos(config, os.Args[2])
+	case "goto":
+        fmt.Println("Goto: needs to be implemented")
 		os.Exit(0)
 	case "new":
 		if len(os.Args) < 3 {
