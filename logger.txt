@@ -1,0 +1,1 @@
+open /Documents/Templates/Go_#00ADD8: no such file or directory

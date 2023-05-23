@@ -3,7 +3,9 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 
 	archive "github.com/antonio-leitao/nau/lib/archive"
@@ -100,7 +102,49 @@ func loadConfig() (utils.Config, error) {
 		return utils.Config{}, err
 	}
 	config.Templates = color_map
+	//gget the number of projects
+	project_count, err := countProjects(config)
+	if err != nil {
+		return utils.Config{}, err
+	}
+	config.Projects = project_count
 	return config, nil
+}
+func countProjects(config utils.Config) (int, error) {
+	projectsPath, err := utils.ConvertPath(config.Projects_path)
+	if err != nil {
+		return 0, err
+	}
+	return countSubdirectories(projectsPath, config.Templates)
+}
+func countSubdirectories(path string, templates map[string]string) (int, error) {
+	// Check if the path is a directory
+	fileInfo, err := ioutil.ReadDir(path)
+	if err != nil {
+		return 0, err
+	}
+	count := 0
+
+	for _, file := range fileInfo {
+		//if it is not a direcotory
+		if !file.IsDir() {
+			continue
+		}
+		//if it is named after a template
+		if _, ok := templates[file.Name()]; ok {
+			// Recursively count subdirectories of template subdirectory
+			subdirPath := filepath.Join(path, file.Name())
+			subdirCount, err := countSubdirectories(subdirPath, templates)
+			if err != nil {
+				return 0, err
+			}
+			count += subdirCount
+		} else {
+
+			count++
+		}
+	}
+	return count, nil
 }
 
 func main() {
@@ -128,7 +172,7 @@ func main() {
 		open.Open(config, os.Args[2])
 		os.Exit(0)
 	case "goto":
-        fmt.Println("Goto: needs to be implemented")
+		fmt.Println("Goto: needs to be implemented")
 		os.Exit(0)
 	case "new":
 		if len(os.Args) < 3 {
@@ -147,11 +191,11 @@ func main() {
 		os.Exit(0)
 	case "config":
 		switch len(os.Args) {
-		case 1:
-			fmt.Println("Error please supply more arguments:", err)
-			os.Exit(1)
 		case 2:
 			configure.Init(config)
+			return
+		case 3:
+			configure.OutputField(config, os.Args[2])
 			return
 		default:
 			err = configure.UpdateConfigField(os.Args[2], strings.Join(os.Args[3:], " "))

@@ -134,6 +134,7 @@ func (m model) renderConfig() string {
 	lines = append(lines, m.styles.promptStyle.Render("WEBSITE: ")+m.config.Website)
 	lines = append(lines, m.styles.promptStyle.Render("REMOTE: ")+m.config.Remote)
 	lines = append(lines, m.styles.promptStyle.Render("EDITOR: ")+m.config.Editor)
+	lines = append(lines, m.styles.promptStyle.Render("PROJECTS: ")+fmt.Sprintf("%v", m.config.Projects))
 	lines = append(lines, m.styles.promptStyle.Render("TEMPLATES: ")+fmt.Sprintf("%v", keys))
 	lines = append(lines, m.styles.promptStyle.Render("PROJECTS_PATH: ")+m.config.Projects_path)
 	lines = append(lines, m.styles.promptStyle.Render("TEMPLATES_PATH: ")+m.config.Templates_path)

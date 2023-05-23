@@ -25,6 +25,7 @@ type Config struct {
 	Archives_path  string
 	Editor         string
 	Templates      map[string]string
+    Projects       int
 }
 
 // type project

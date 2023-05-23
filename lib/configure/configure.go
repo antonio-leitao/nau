@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"reflect"
 	"regexp"
 	"strings"
 
@@ -143,6 +144,25 @@ func UpdateConfigField(field string, value string) error {
 		fmt.Fprintln(writer, line)
 	}
 	return writer.Flush()
+}
+func OutputField(config interface{}, field string) {
+	configValue := reflect.ValueOf(config)
+	if configValue.Kind() == reflect.Ptr {
+		configValue = configValue.Elem()
+	}
+	if configValue.Kind() != reflect.Struct {
+		fmt.Println("!")
+		return
+	}
+	field = strings.ToUpper(field)
+	fieldValue := configValue.FieldByNameFunc(func(fieldName string) bool {
+		return strings.ToUpper(fieldName) == field
+	})
+	if !fieldValue.IsValid() {
+		fmt.Println("!")
+		return
+	}
+	fmt.Println(fieldValue.Interface())
 }
 func Init(config utils.Config) {
 	model := initialModel(config.Base_color)
