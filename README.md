@@ -11,43 +11,66 @@ The side-project manager you didn't know you needed.
 brew tap antonio-leitao/taps
 brew install nau
 ```
-# Getting Started 
+# Getting Started
 NAU allows you to store permanent variables such as your name, email and website for automatically adding in projects.
 It also requires you to supply a directory where to store your Projects, where your Templates are and where you want to store your Archives.
-You can setup all variables by running
+To display the current configuration settings, use the following command:
+```shell
+nau
+```
+You can set up `nau` through the `config` command.
+# Config
+By default `nau` loads its configuration form the file `~/.config/naurc`. You can edit this file manually or set all fields in one go by running the following command:
 ```shell
 nau config
 ```
+
 <p align="center">
 <img alt="NAU demo" src="assets/config.gif" width="600" />
 </p>
 
-Otherwise you can simply change specific fields at any time by running:
+This command will prompt the user to set each configuration field individually.
+
+#### Print a single field
+To print the value of a specific configuration field, use the following command:
 
 ```shell
-nau config <field> <value>
+nau config [field]
 ```
+
+<p align="center">
+<img alt="NAU demo" src="assets/config_field.gif" width="600" />
+</p>
+
+Replace `[field]` with the name of the configuration field. This command will print the value of the specified field to the standard output.
+
+#### Set single a single field
+To set the value of a specific configuration field, use the following command:
+
+```shell
+nau config [field] [value]
+```
+
+<p align="center">
+<img alt="NAU demo" src="assets/config_field_value.gif" width="600" />
+</p>
+
+Replace `[field]` with the name of the configuration field and `[value]` with the desired value. This command will set the value of the specified field in the configuration.
+Below are the available fields:
 Below are all available fields with their explanations:
 - `AUTHOR`: Your name
 - `WEBSITE`: Your website 
 - `EMAIL`: Your email 
-- `REMOTE`: Url for your remote repositories. This is accessible if you want to imediatly add a remote directory to new projects on initialization.
-- `BASE_COLOR`: Hex value for NAU's ui
-- `EDITOR`: command to run for starting your preffered editor (code, nvim, vim...)
+- `REMOTE`: Url for your remote repositories. This is accessible if you want to immediately add a remote directory to new projects.
+- `BASE_COLOR`: Hex value for NAU's ui. Defaults to `#814584` ![#814584](https://placehold.co/15x15/814584/814584.png).
+- `EDITOR`: command to run for starting your preffered editor (VSCode: `code`, NeoVim: `nvim`, VIM: `vim`...). Defaults to `nvim`.
 - `PROJECTS_PATH`: Path to your projects folder. Your root path is appended at the begining of the string you supply.
 - `TEMPLATES_PATH`: Path to where your templates reside (see more in the Templates section)
 - `ARCHIVES_PATH`: Where should NAU place archived projects (see more on the `archive` command)
-You can also manually configure NAU through the file `.naurc` in your root directory
-To view your current configuration just run
-
-```shell
-nau
-```
-# Commands
 
 NAU is built to be modular. Imagine a Makefile but for you computer. Is is aimed at managing your projects. Currently has these commands implemented
 
-### Open 
+# Open 
 Opens a specific project using specified `editor`, default is `neovim`.
 
 > **Note**
@@ -61,7 +84,7 @@ If `project` is specified attemps to open best match of all your projects. If it
 <img alt="NAU demo" src="assets/open_project.gif" width="600" />
 </p>
 
-### New
+# New
 Creates a new project either empty or from a prebuilt `nau` template. 
 If `template` is specified will prompt the user for information in order to create a new project from the specified template. If it is not specified will prompt the user to choose which template to load.
 
@@ -75,7 +98,7 @@ nau new <template>
 <img alt="NAU demo" src="assets/new.gif" width="600" />
 </p>
 
-### Archive
+# Archive
 Cleans and compresses specific project. Moves to `Archives` directory.
 
 > **Note**
@@ -88,7 +111,7 @@ If `project` is specified will run `make archive` before compressing and moving 
 
 # Templates
 Nau relies on understanding what type are your projects. Each project either comes from a template or it doesnt.
-### Template Direcory
+### Template Directory
 Check the [`nau-templates`] repository for an example of a direcotry of templates. The template directory is stored in `config.Templates_path` and should look like this:
 ```text
 templates
