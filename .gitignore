@@ -4,3 +4,4 @@ Makefile
 dist/
 .env
 **/.DS_Store
+.logger.txt

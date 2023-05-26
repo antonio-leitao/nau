@@ -1,22 +1,125 @@
-package configure
+package lib
 
 import (
-	"bufio"
 	"fmt"
 	"os"
-	"reflect"
-	"regexp"
-	"strings"
-
-	utils "github.com/antonio-leitao/nau/lib/utils"
-	tea "github.com/charmbracelet/bubbletea"
+    "strings"
+    "reflect"
+    "regexp"
+	"bufio"
 )
+type Config struct {
+	Version        string
+	Url            string
+	Author         string
+	Email          string
+	Website        string
+	Remote         string
+	Base_color     string
+	Projects_path  string
+	Templates_path string
+	Archives_path  string
+	Editor         string
+	Templates      map[string]string
+	Projects       int
+}
 
 // these have to be lowercase for better matching
-var customizableFields = []string{"AUTHOR", "EMAIL", "REMOTE", "BASE_COLOR", "EDITOR", "PROJECTS_PATH", "TEMPLATES_PATH", "ARCHIVES_PATH"}
+var CustomizableFields = []string{"AUTHOR", "EMAIL", "REMOTE", "BASE_COLOR", "EDITOR", "PROJECTS_PATH", "TEMPLATES_PATH", "ARCHIVES_PATH"}
+func readConfig() (Config, error) {
+    //read CONFIG file!
+	defaultConfig := Config{
+		Url:            "https://github.com/antonio-leitao/nau",
+		Author:         "Antonio Leitao",
+		Website:        "https://antonio-leitao.github.io",
+		Email:          "aleitao@novaims.unl.pt",
+		Remote:         "https://github.com/antonio-leitao",
+		Base_color:     "#814584",
+		Editor:         "nvim",
+		Projects_path:  "~/Documents/Projects",
+		Templates_path: "~/Documents/Templates",
+		Archives_path:  "~/Documents/Archives",
+	}
+    //if file not exsits defaults config
+	configFile, err := ExpandPath("~/.config/naurc")
+	if _, err := os.Stat(configFile); os.IsNotExist(err) {
+		return defaultConfig, nil
+	}
+
+	file, err := os.Open(configFile)
+	if err != nil {
+		return Config{}, err
+	}
+	defer file.Close()
+
+	config := defaultConfig
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) != 2 {
+			return Config{}, fmt.Errorf("Invalid config format")
+		}
+
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+
+		switch key {
+		case "AUTHOR":
+			config.Author = value
+		case "EMAIL":
+			config.Email = value
+		case "WEBSITE":
+			config.Website = value
+		case "REMOTE":
+			config.Remote = value
+		case "EDITOR":
+			config.Editor = value
+		case "BASE_COLOR":
+			config.Base_color = value
+		case "PROJECTS_PATH":
+			config.Projects_path = value
+		case "TEMPLATES_PATH":
+			config.Templates_path = value
+		case "ARCHIVES_PATH":
+			config.Archives_path = value
+		default:
+			return Config{}, fmt.Errorf("Unknown config field: %s", key)
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return Config{}, err
+	}
+	return config, nil
+}
+//############## EXPOSED FUNCTIONS #################s
+// function to load the config stuff
+func LoadConfig() (Config, error) {
+	config, err := readConfig()
+	if err != nil {
+		return Config{}, err
+	}
+	//get templates
+	templatesPath, err := ExpandPath(config.Templates_path)
+	if err != nil {
+		return Config{}, err
+	}
+	color_map, err := loadTemplatesColorMap(templatesPath)
+	if err != nil {
+		return Config{}, err
+	}
+	config.Templates = color_map
+	//gget the number of projects
+	project_count, err := countProjects(config)
+	if err != nil {
+		return Config{}, err
+	}
+	config.Projects = project_count
+	return config, nil
+}
 
 func isCustomizableField(field string) bool {
-	for _, f := range customizableFields {
+	for _, f := range CustomizableFields {
 		if f == field {
 			return true
 		}
@@ -47,7 +150,7 @@ func isValidHexColor(color string) bool {
 	match, _ := regexp.MatchString(regex, color)
 	return match
 }
-func validateValue(field string, value string) string {
+func ValidateValue(field string, value string) string {
 	switch field {
 	case "EMAIL":
 		if !isEmailValid(value) {
@@ -58,7 +161,7 @@ func validateValue(field string, value string) string {
 			return "• Url is not valid"
 		}
 	case "PROJECTS_PATH", "TEMPLATES_PATH", "ARCHIVES_PATH":
-		path, err := utils.ConvertPath(value)
+		path, err := ExpandPath(value)
 		if err != nil {
 			return "• " + err.Error()
 		}
@@ -80,12 +183,12 @@ func UpdateConfigField(field string, value string) error {
 		return fmt.Errorf("Invalid field: %s", field)
 	}
 	//check if the values are correct
-	err_string := validateValue(field, value)
+	err_string := ValidateValue(field, value)
 	if err_string != "" {
 		return fmt.Errorf(err_string)
 	}
 	//migh tnot me able to get user
-	configFile, err := utils.ConvertPath(".naurc")
+	configFile, err := ExpandPath("~/.config/naurc")
 	if err != nil {
 		return err
 	}
@@ -145,6 +248,7 @@ func UpdateConfigField(field string, value string) error {
 	}
 	return writer.Flush()
 }
+
 func OutputField(config interface{}, field string) {
 	configValue := reflect.ValueOf(config)
 	if configValue.Kind() == reflect.Ptr {
@@ -164,10 +268,4 @@ func OutputField(config interface{}, field string) {
 	}
 	fmt.Println(fieldValue.Interface())
 }
-func Init(config utils.Config) {
-	model := initialModel(config.Base_color)
-	if _, err := tea.NewProgram(model, tea.WithAltScreen()).Run(); err != nil {
-		fmt.Printf("could not start program: %s\n", err)
-		os.Exit(1)
-	}
-}
+

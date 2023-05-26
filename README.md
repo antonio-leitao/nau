@@ -22,7 +22,7 @@ nau config
 <img alt="NAU demo" src="assets/config.gif" width="600" />
 </p>
 
-Otherwise you can simply change specific fields aat any time by running:
+Otherwise you can simply change specific fields at any time by running:
 
 ```shell
 nau config <field> <value>
@@ -75,20 +75,6 @@ nau new <template>
 <img alt="NAU demo" src="assets/new.gif" width="600" />
 </p>
 
-### Memo
-Stores and organizes miscellaneous memos.
-
-```shell
-nau memo 
-```
-Creates a new memo.
-
-```shell
-nau memos <query>
-```
-Allows you to see iteractivelly all your memos. You can also select, filter and delete.
-If a `query` starts the list already with the filter applied.
-
 ### Archive
 Cleans and compresses specific project. Moves to `Archives` directory.
 
@@ -108,7 +94,7 @@ Check the [`nau-templates`] repository for an example of a direcotry of template
 templates
 │   Python_#3776AB
 │   Rust_#B2292D
-│   Web_#F7DF1E
+│   JavaScript_#F7DF1E
 │   PascalCase_#000000
 ```
 The supplied colors are going to be used by NAU thorughout the commands.This will result in the following projects directory:
@@ -121,7 +107,10 @@ projects
 │   │   IDX_RustProject
 ```
 ### `.nau` file
-Each template should have a now file that specified which files are templated and have to be collapsed.
+Each template should have a `.nau` file that specified which files are templated and have to be collapsed, the syntax is the same as `.gitignore`.
 
 ### `make init`
 After collapsing the template `nau` will attempt to run the Makefile command `make init` this is usefull to initiate any template specific environments such as node or conda.
+
+# Template Syntax
+NAU uses golang's templating syntax to collapse the templates. Currently

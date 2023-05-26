@@ -6,15 +6,16 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 
-	utils "github.com/antonio-leitao/nau/lib/utils"
+	lib "github.com/antonio-leitao/nau/lib"
 	"github.com/sahilm/fuzzy"
 )
 
-type Projects []utils.Project
+type Projects []lib.Project
 
 func (p Projects) String(i int) string {
 	return p[i].Name
@@ -106,39 +107,45 @@ func runMakeArchive(targetDir string) error {
 	}
 	// Run the "make archive" command
 	cmd := exec.Command("make", "archive")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("make archive failed: %s", output)
-	}
+	_, _ = cmd.CombinedOutput()
+    //here errors dont matter because we dont care if there are no makefiles
 
 	return nil
 }
 
-func archiveProject(destDir, srcDir string) {
+func archiveProject(destDir, srcDir string) error {
 	//before archiving run the make archive target on that directory.
-	_ = runMakeArchive(srcDir)
-	//archive the project
-	err := compressAndMove(srcDir, destDir)
+	err := runMakeArchive(srcDir)
 	if err != nil {
-		panic(err)
+		return err
 	}
+	//archive the project
+	err = compressAndMove(srcDir, destDir)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func Archive(config utils.Config, query string) {
-	projectList, _ := utils.GetProjects(config)
+func Execute(config lib.Config, query string) {
+	projectList, _ := lib.GetProjects(config)
 	projects := Projects(projectList)
 	candidates := fuzzy.FindFrom(query, projects)
 
 	//exit it nothing is found
 	if len(candidates) == 0 {
-		fmt.Println("ERROR: No project found")
+		fmt.Println("NAU ERROR: No project found")
 		os.Exit(1)
 	}
-
 	projectPath := projects[candidates[0].Index].Path
-    archivesPath,err := utils.ConvertPath(config.Archives_path)
-    if err !=nil{
-        fmt.Println("Archives not found")
-    }
-	archiveProject(archivesPath,projectPath)
+	archivesPath, err := lib.ExpandPath(config.Archives_path)
+	if err != nil {
+		log.Printf("NAU ERROR: %s", err)
+		os.Exit(1)
+	}
+	err = archiveProject(archivesPath, projectPath)
+	if err != nil {
+		log.Printf("NAU ERROR: %s", err)
+		os.Exit(1)
+	}
 }

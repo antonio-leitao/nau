@@ -1,32 +1,14 @@
-package utils
+package lib
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
-	"os/user"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
-
-	"github.com/lucasb-eyer/go-colorful"
-	"github.com/mergestat/timediff"
 )
-type Config struct {
-	Version        string
-	Url            string
-	Author         string
-	Email          string
-	Website        string
-	Remote         string
-	Base_color     string
-	Projects_path  string
-	Templates_path string
-	Archives_path  string
-	Editor         string
-	Templates      map[string]string
-    Projects       int
-}
 
 // type project
 type Project struct {
@@ -39,20 +21,6 @@ type Project struct {
 	Color        string
 	Path         string
 	Timestamp    time.Time //Time the proejct was last modified
-}
-
-func (p Project) Title() string { return p.Display_Name }
-func (p Project) Description() string {
-	timestr := timediff.TimeDiff(p.Timestamp, timediff.WithStartTime(time.Now()))
-	formatted := fmt.Sprintf("Updated %s", timestr)
-	return formatted
-}
-func (p Project) FilterValue() string { return p.Name + p.Lang }
-func (p Project) SubmitValue() string { return p.Path }
-func (p Project) GetColor() string    { return p.Color }
-func (p Project) GetSubduedColor() string {
-	subduedColor, _ := DimColor(p.Color, 0.4)
-	return subduedColor
 }
 
 func ToHyphenName(s string) string {
@@ -112,128 +80,6 @@ func discombobulate(s string) (string, string, string, string, string) {
 	return code, ToDunderName(name), ToFolderName(name), ToHyphenName(name), ToDisplayName(name)
 }
 
-// utils get all projects
-func getThemedProjects(path string, lang string, color string) []Project {
-	var themedProjects []Project
-	subentries, _ := os.ReadDir(path + "/" + lang)
-	for _, subentry := range subentries {
-		if !validEntry(subentry) {
-			continue
-		}
-		code, name, folder_name, repo_name, display_name := discombobulate(subentry.Name())
-
-		timestamp, _ := getDirectoryTimestamp(path + "/" + lang + "/" + subentry.Name())
-		project := Project{
-			Name:         name,
-			Folder_name:  folder_name,
-			Repo_name:    repo_name,
-			Display_Name: display_name,
-			Code:         code,
-			Lang:         lang,
-			Color:        color,
-			Path:         path + "/" + lang + "/" + subentry.Name(),
-			Timestamp:    timestamp,
-		}
-		themedProjects = append(themedProjects, project)
-	}
-	return themedProjects
-
-}
-
-func getDirectoryTimestamp(dirPath string) (time.Time, error) {
-	// Check if the directory exists
-	fileInfo, err := os.Stat(dirPath)
-	if err != nil {
-		return time.Time{}, err
-	}
-
-	// If the directory contains a .git file, return the modification time of that file
-	gitFilePath := dirPath + "/.git"
-	gitFileInfo, err := os.Stat(gitFilePath)
-	if err == nil && !gitFileInfo.IsDir() {
-		return gitFileInfo.ModTime(), nil
-	}
-
-	// If the directory does not contain a .git file, return the creation time of the directory
-	if fileInfo.IsDir() {
-		return fileInfo.ModTime(), nil
-	}
-
-	// If the directory exists but is not a directory, return an error
-	return time.Time{}, fmt.Errorf("%s is not a directory", dirPath)
-}
-
-func GetProjects(config Config) ([]Project, error) {
-	var projectNames []Project
-
-	//convert the raw path
-	projectPath, err := ConvertPath(config.Projects_path)
-	if err != nil {
-		return nil, err
-	}
-	//read projects directory
-	entries, err := os.ReadDir(projectPath)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, entry := range entries {
-		if !validEntry(entry) {
-			continue
-		}
-		if contains(config.Templates, entry.Name()) {
-			themedProjects := getThemedProjects(projectPath, entry.Name(), config.Templates[entry.Name()])
-			projectNames = append(projectNames, themedProjects...)
-		} else {
-			code, name, folder_name, repo_name, display_name := discombobulate(entry.Name())
-
-			timestamp, err := getDirectoryTimestamp(projectPath + "/" + entry.Name())
-			if err != nil {
-				return nil, err
-			}
-			project := Project{
-				Name:         name,
-				Folder_name:  folder_name,
-				Repo_name:    repo_name,
-				Display_Name: display_name,
-				Code:         code,
-				Lang:         "Mixed",
-				Color:        config.Base_color,
-				Path:         projectPath + "/" + entry.Name(),
-				Timestamp:    timestamp,
-			}
-			projectNames = append(projectNames, project)
-		}
-
-	}
-
-	return projectNames, nil
-}
-
-func DimColor(hexColor string, factor float64) (string, error) {
-	// Parse the hexadecimal color string
-	c, err := colorful.Hex(hexColor)
-	if err != nil {
-		return "", err
-	}
-
-	// Convert the color to the HSL color space
-	h, s, l := c.Hsl()
-
-	// Dim the color by reducing the saturation and increasing the lightness
-	s *= (1 - factor)
-	l *= (1 - factor)
-
-	// Convert the dimmed color back to the RGB color space
-	dimmed := colorful.Hsl(h, s, l)
-	r, g, b := dimmed.RGB255()
-
-	// Format the RGB values as a hexadecimal color string
-	dimmedHex := fmt.Sprintf("#%02x%02x%02x", r, g, b)
-
-	return dimmedHex, nil
-}
-
 func contains(color_map map[string]string, key string) bool {
 	_, ok := color_map[key]
 	if ok {
@@ -242,7 +88,19 @@ func contains(color_map map[string]string, key string) bool {
 		return false
 	}
 }
+func ExpandPath(path string) (string, error) {
+	//Converts a path starting with ~ into a full path
+	if strings.HasPrefix(path, "~") {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		path = strings.Replace(path, "~", homeDir, 1)
+	}
+	return path, nil
+}
 func validEntry(entry os.DirEntry) bool {
+	//Chekcs if a path is not hidden nor a directory
 	if !entry.IsDir() {
 		return false
 	}
@@ -251,9 +109,45 @@ func validEntry(entry os.DirEntry) bool {
 	}
 	return true
 }
+func countProjects(config Config) (int, error) {
+	projectsPath, err := ExpandPath(config.Projects_path)
+	if err != nil {
+		return 0, err
+	}
+	return countSubdirectories(projectsPath, config.Templates)
+}
+func countSubdirectories(path string, templates map[string]string) (int, error) {
+	// Check if the path is a directory
+	fileInfo, err := ioutil.ReadDir(path)
+	if err != nil {
+		return 0, err
+	}
+	count := 0
+
+	for _, file := range fileInfo {
+		//if it is not a direcotory
+		if !file.IsDir() {
+			continue
+		}
+		//if it is named after a template
+		if _, ok := templates[file.Name()]; ok {
+			// Recursively count subdirectories of template subdirectory
+			subdirPath := filepath.Join(path, file.Name())
+			subdirCount, err := countSubdirectories(subdirPath, templates)
+			if err != nil {
+				return 0, err
+			}
+			count += subdirCount
+		} else {
+
+			count++
+		}
+	}
+	return count, nil
+}
 
 // get all themes
-func LoadTemplatesColorMap(dirPath string) (map[string]string, error) {
+func loadTemplatesColorMap(dirPath string) (map[string]string, error) {
 	// Compile a regular expression to match the folder names
 	re := regexp.MustCompile(`^(\w+)_(#\w{6})$`)
 
@@ -287,15 +181,113 @@ func LoadTemplatesColorMap(dirPath string) (map[string]string, error) {
 	return nameColorMap, nil
 }
 
-func ConvertPath(path string) (string, error) {
-	// Get the current user's home directory
-	usr, err := user.Current()
+// utils get all projects
+func getThemedProjects(path string, lang string, color string) ([]Project, error) {
+	var themedProjects []Project
+	subentries, err := os.ReadDir(path + "/" + lang)
 	if err != nil {
-		return "", err
+		return themedProjects, err
 	}
-	// Expand the tilde symbol to the full path of the home directory
-	expandedPath := filepath.Join(usr.HomeDir, path)
-	// Return the absolute path
-	return filepath.Abs(expandedPath)
+	for _, subentry := range subentries {
+		if !validEntry(subentry) {
+			continue
+		}
+		code, name, folder_name, repo_name, display_name := discombobulate(subentry.Name())
+
+		timestamp, _ := getDirectoryTimestamp(path + "/" + lang + "/" + subentry.Name())
+		project := Project{
+			Name:         name,
+			Folder_name:  folder_name,
+			Repo_name:    repo_name,
+			Display_Name: display_name,
+			Code:         code,
+			Lang:         lang,
+			Color:        color,
+			Path:         path + "/" + lang + "/" + subentry.Name(),
+			Timestamp:    timestamp,
+		}
+		themedProjects = append(themedProjects, project)
+	}
+	return themedProjects, nil
+
 }
 
+func getDirectoryTimestamp(dirPath string) (time.Time, error) {
+	// Check if the directory exists
+	fileInfo, err := os.Stat(dirPath)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	// If the directory contains a .git file, return the modification time of that file
+	gitFilePath := dirPath + "/.git"
+	gitFileInfo, err := os.Stat(gitFilePath)
+	if err == nil && !gitFileInfo.IsDir() {
+		return gitFileInfo.ModTime(), nil
+	}
+
+	// If the directory does not contain a .git file, return the creation time of the directory
+	if fileInfo.IsDir() {
+		return fileInfo.ModTime(), nil
+	}
+
+	// If the directory exists but is not a directory, return an error
+    return time.Time{}, fmt.Errorf("Could not read timestamp from %s", dirPath)
+}
+
+func GetProjects(config Config) ([]Project, error) {
+	var projectNames []Project
+
+	//convert the raw path
+	projectPath, err := ExpandPath(config.Projects_path)
+	if err != nil {
+		return nil, err
+	}
+	//read projects directory
+	entries, err := os.ReadDir(projectPath)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, entry := range entries {
+		if !validEntry(entry) {
+			continue
+		}
+		if contains(config.Templates, entry.Name()) {
+			themedProjects, err := getThemedProjects(projectPath, entry.Name(), config.Templates[entry.Name()])
+            if err != nil{
+                return projectNames, err
+            }
+			projectNames = append(projectNames, themedProjects...)
+		} else {
+			code, name, folder_name, repo_name, display_name := discombobulate(entry.Name())
+			timestamp, err := getDirectoryTimestamp(projectPath + "/" + entry.Name())
+			if err != nil {
+				return nil, err
+			}
+			project := Project{
+				Name:         name,
+				Folder_name:  folder_name,
+				Repo_name:    repo_name,
+				Display_Name: display_name,
+				Code:         code,
+				Lang:         "Mixed",
+				Color:        config.Base_color,
+				Path:         projectPath + "/" + entry.Name(),
+				Timestamp:    timestamp,
+			}
+			projectNames = append(projectNames, project)
+		}
+
+	}
+	return projectNames, nil
+}
+
+// hidden function
+func readProjects()  {}
+func readTemplates() {}
+
+// public methods
+func GetProject() {
+	//gets query. attempts to
+}

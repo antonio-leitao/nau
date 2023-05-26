@@ -5,8 +5,11 @@ package configure
 
 import (
 	"fmt"
+	"log"
+	"os"
 	"strings"
 
+	lib "github.com/antonio-leitao/nau/lib"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -111,11 +114,11 @@ type model struct {
 
 func initialModel(base_color string) model {
 	m := model{
-		inputs:     make([]Field, len(customizableFields)),
+		inputs:     make([]Field, len(lib.CustomizableFields)),
 		keys:       keys,
 		help:       help.New(),
 		styles:     DefaultStyles(base_color),
-		errors:     make([]string, len(customizableFields)),
+		errors:     make([]string, len(lib.CustomizableFields)),
 		line_width: 48,
 	}
 	//start all errors as empty
@@ -124,7 +127,7 @@ func initialModel(base_color string) model {
 	}
 	//start all the fields
 	var f Field
-	for i, field := range customizableFields {
+	for i, field := range lib.CustomizableFields {
 		f.input = textinput.New()
 		f.input.CharLimit = m.line_width
 		f.name = field
@@ -233,13 +236,13 @@ func (m model) Validate() (tea.Model, tea.Cmd) {
 		m.errors[i] = ""
 	}
 	//validate entries
-	for i, field := range customizableFields {
+	for i, field := range lib.CustomizableFields {
 		value := m.inputs[i].input.Value()
 		if len(value) == 0 {
 			m.errors[i] = m.styles.warningStyle.Render("• Field cannot be empty")
 			continue
 		}
-		error_string := validateValue(field, value)
+		error_string := lib.ValidateValue(field, value)
 		if error_string != "" {
 			m.errors[i] = m.styles.errorStyle.Render(error_string)
 		}
@@ -249,7 +252,7 @@ func (m model) Validate() (tea.Model, tea.Cmd) {
 
 func (m model) Submit() tea.Msg {
 	for _, pair := range m.inputs {
-		UpdateConfigField(pair.name, pair.input.Value())
+		lib.UpdateConfigField(pair.name, pair.input.Value())
 	}
 	return tea.Quit() //this will make program run ad infinitum. Change to tea.Quit()
 }
@@ -305,4 +308,27 @@ func (m model) View() string {
 		lipgloss.Center,
 		b.String(),
 	)
+}
+func init_config(config lib.Config) {
+	model := initialModel(config.Base_color)
+	if _, err := tea.NewProgram(model, tea.WithAltScreen()).Run(); err != nil {
+		log.Printf("NAU ERROR could not start program: %s\n", err)
+		os.Exit(1)
+	}
+}
+func Execute(config lib.Config, args []string) {
+	if len(args) == 0 {
+		// No arguments provided
+		init_config(config)
+	} else if len(args) == 1 {
+		// Only field provided
+		lib.OutputField(config, args[0])
+	} else if len(args) > 1 {
+		// Run program for field and value case
+		err := lib.UpdateConfigField(args[0], strings.Join(args[1:], " "))
+		if err != nil {
+			log.Println("Error updating config file file:", err)
+			os.Exit(1)
+		}
+	}
 }

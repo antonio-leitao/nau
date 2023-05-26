@@ -2,9 +2,10 @@ package new
 
 import (
 	"fmt"
+    "os"
+    "log"
 	"strings"
-
-	utils "github.com/antonio-leitao/nau/lib/utils"
+	lib "github.com/antonio-leitao/nau/lib"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -105,7 +106,7 @@ type Model struct {
 	//git confirmatio
 	confirmation bool
 	//really just to pass it along
-	config *utils.Config
+	config *lib.Config
 	//adaptivsize
 	width  int
 	height int
@@ -119,7 +120,7 @@ func newModel(
 	template_colors []string,
 	existing_names []string,
 	existing_codes []string,
-	config *utils.Config,
+	config *lib.Config,
 ) Model {
 	m := Model{
 		showHelp:        true,
@@ -453,7 +454,7 @@ func (m Model) Validate() {
 	m.errors[0] = ""
 	m.errors[1] = ""
 	//validate name and code
-	name := utils.ToHyphenName(m.inputs[0].Value())
+	name := lib.ToHyphenName(m.inputs[0].Value())
 	if contained(name, m.existing_names) {
 		m.errors[0] = m.Styles.ErrorStyle.Render("• Name already in use")
 	}
@@ -471,12 +472,12 @@ func (m Model) Validate() {
 }
 
 func (m Model) Submit() tea.Cmd {
-	folder_name := utils.ToFolderName(m.inputs[0].Value())
+	folder_name := lib.ToFolderName(m.inputs[0].Value())
 	code := strings.ToUpper(m.inputs[1].Value())
 	sub := Submission{
-		project_name: utils.ToDunderName(m.inputs[0].Value()),
+		project_name: lib.ToDunderName(m.inputs[0].Value()),
 		folder_name:  code + "_" + folder_name,
-		repo_name:    utils.ToHyphenName(m.inputs[0].Value()),
+		repo_name:    lib.ToHyphenName(m.inputs[0].Value()),
 		description:  m.summary.Value(),
 		git:          m.confirmation,
 	}
@@ -611,13 +612,14 @@ func (m Model) ShortHelp() []key.Binding {
 	}
 }
 
-func New(config utils.Config, query string) {
+func Execute(config lib.Config, query string) {
 	//where do we start?
 	initial_state, template, base_color := HandleArgs(config, query)
 	//get all projects names
-	projects, err := utils.GetProjects(config)
+	projects, err := lib.GetProjects(config)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
+        os.Exit(1)
 	}
 	//separate them
 	var codes, repoNames []string
@@ -625,7 +627,7 @@ func New(config utils.Config, query string) {
 		codes = append(codes, project.Code)
 		repoNames = append(repoNames, project.Repo_name)
 	}
-
+    //get list of templates
 	templates := []string{"Empty"}
 	template_colors := []string{base_color}
 	for lang, color := range config.Templates {
@@ -648,6 +650,7 @@ func New(config utils.Config, query string) {
 		tea.WithAltScreen(),
 	)
 	if _, err := p.Run(); err != nil {
-		fmt.Println(err)
+		log.Println(err)
+        os.Exit(1)
 	}
 }

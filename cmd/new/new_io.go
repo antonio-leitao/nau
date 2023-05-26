@@ -3,6 +3,7 @@ package new
 import (
 	"bytes"
 	"fmt"
+    "log"
 	"io"
 	"io/ioutil"
 	"os"
@@ -11,7 +12,7 @@ import (
 	"syscall"
 	"text/template"
 
-	utils "github.com/antonio-leitao/nau/lib/utils"
+	lib "github.com/antonio-leitao/nau/lib"
 	"github.com/sahilm/fuzzy"
 )
 
@@ -39,7 +40,7 @@ func loggit(msg string) error {
 	return nil
 }
 
-func createNewProject(sub Submission, config *utils.Config, template string) {
+func createNewProject(sub Submission, config *lib.Config, template string) {
 	//if the project is empty just start an empty one
 	if template == "Empty" {
 		newEmptyProject(sub, config)
@@ -48,7 +49,7 @@ func createNewProject(sub Submission, config *utils.Config, template string) {
 	}
 }
 
-func createTemplateProject(sub Submission, config *utils.Config, template string) {
+func createTemplateProject(sub Submission, config *lib.Config, template string)error {
 	//new_data_to_colapse
 	data := Data{
 		Author:      config.Author,
@@ -59,43 +60,56 @@ func createTemplateProject(sub Submission, config *utils.Config, template string
 		Description: sub.description,
 	}
 	//convert source path
-	source_path, _ := utils.ConvertPath(config.Templates_path)
-	source_path = config.Templates_path + "/" + template + "_" + config.Templates[template]
+	templates_path, err := lib.ExpandPath(config.Templates_path)
+    if err != nil{
+        return err
+    }
+    source_path := templates_path + "/" + template + "_" + config.Templates[template]
 	//convert target_path
-	target_path, _ := utils.ConvertPath(config.Projects_path)
-	target_path = target_path + "/" + template + "/" + sub.folder_name
+	projects_path, err := lib.ExpandPath(config.Projects_path)
+    if err != nil{
+        return err
+    }
+    target_path := projects_path + "/" + template + "/" + sub.folder_name
 	//create new direcotry
-	_ = os.MkdirAll(target_path, 0755)
+	err = os.MkdirAll(target_path, 0755)
+    if err != nil{
+        return err
+    }
 	//place everything there
-	err := CopyDirectory(source_path, target_path, &data)
+	err = CopyDirectory(source_path, target_path, &data)
 	if err != nil {
 		loggit(err.Error())
-		fmt.Printf("NAU ERROR: Failed to create Template: %v", err)
-		return
+		log.Printf("NAU ERROR: Failed to create Template: %v", err)
+		return err
 	}
 	//colapse template
 	err = CollapseDirectory(target_path, &data)
 	if err != nil {
 		loggit(err.Error())
-		fmt.Println("NaError processing directory:", err)
-		return
+		log.Println("NaError processing directory:", err)
+		return err
 	}
+    return nil
 }
 
-func newEmptyProject(sub Submission, config *utils.Config) {
-	target_path, _ := utils.ConvertPath(config.Projects_path)
+func newEmptyProject(sub Submission, config *lib.Config)error {
+	target_path, err := lib.ExpandPath(config.Projects_path)
+    if err != nil{
+        return err
+    }
 	target_path = target_path + "/"
-	err := createEmptyFolder(target_path, sub.folder_name)
+	err = createEmptyFolder(target_path, sub.folder_name)
 	if err != nil {
-		fmt.Printf("NAU ERROR: Failed to create folder: %v", err)
-		return
+		log.Printf("NAU ERROR: Failed to create folder: %v", err)
+		return err
 	}
+    return nil
 }
 
 func createEmptyFolder(target, name string) error {
 	// Create the full target path by joining the target directory and the name
 	targetPath := filepath.Join(target, name)
-
 	// Create the target directory
 	err := os.MkdirAll(targetPath, 0755)
 	if err != nil {
@@ -124,12 +138,10 @@ func CopyDirectory(scrDir, dest string, data *Data) error {
 		if err != nil {
 			return err
 		}
-
 		stat, ok := fileInfo.Sys().(*syscall.Stat_t)
 		if !ok {
 			return fmt.Errorf("failed to get raw syscall.Stat_t data for '%s'", sourcePath)
 		}
-
 		switch fileInfo.Mode() & os.ModeType {
 		case os.ModeDir:
 			if err := CreateIfNotExists(destPath, 0755); err != nil {
@@ -171,7 +183,6 @@ func Exists(filePath string) bool {
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		return false
 	}
-
 	return true
 }
 
@@ -179,11 +190,9 @@ func CreateIfNotExists(dir string, perm os.FileMode) error {
 	if Exists(dir) {
 		return nil
 	}
-
 	if err := os.MkdirAll(dir, perm); err != nil {
 		return fmt.Errorf("failed to create directory: '%s', error: '%s'", dir, err.Error())
 	}
-
 	return nil
 }
 
@@ -200,20 +209,16 @@ func Copy(srcFile, dstFile string) error {
 	if err != nil {
 		return err
 	}
-
 	defer out.Close()
-
 	in, err := os.Open(srcFile)
 	defer in.Close()
 	if err != nil {
 		return err
 	}
-
 	_, err = io.Copy(out, in)
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -307,7 +312,7 @@ func collapseString(input string, data *Data) (string, error) {
 	return output.String(), nil
 }
 
-func HandleArgs(config utils.Config, query string) (string, string, string) {
+func HandleArgs(config lib.Config, query string) (string, string, string) {
 	//if no no template name was supplied start the with choose
 	if len(query) == 0 {
 		return "choose", "", config.Base_color
@@ -320,7 +325,7 @@ func HandleArgs(config utils.Config, query string) (string, string, string) {
 	candidates := fuzzy.Find(query, templates)
 	//exit it nothing is found
 	if len(candidates) == 0 {
-		fmt.Println("ERROR: No matching template found")
+		log.Println("NAU ERROR: No matching template found")
 		os.Exit(1)
 	}
 	choice := candidates[0].Str

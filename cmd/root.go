@@ -1,10 +1,11 @@
-package home
+package root
 
 import (
 	"fmt"
-	utils "github.com/antonio-leitao/nau/lib/utils"
+	lib "github.com/antonio-leitao/nau/lib"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"log"
 	"os"
 )
 
@@ -38,12 +39,12 @@ func defaultStyles(base_color string) Styles {
 
 type model struct {
 	styles Styles
-	config utils.Config
+	config lib.Config
 	width  int
 	height int
 }
 
-func newModel(config utils.Config) model {
+func newModel(config lib.Config) model {
 	m := model{
 		styles: defaultStyles(config.Base_color),
 		config: config,
@@ -150,13 +151,13 @@ func (m model) renderInfo() string {
 	sections = append(sections, m.styles.infoStyle.Render("Url: "+m.config.Url))
 	return lipgloss.JoinVertical(lipgloss.Left, sections...)
 }
-func Home(config utils.Config) {
+func Execute(config lib.Config) {
 
 	m := newModel(config)
 	p := tea.NewProgram(m, tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {
-		fmt.Println("Error running program:", err)
+		log.Println("NAU ERROR: Error running program:", err)
 		os.Exit(1)
 	}
 }
