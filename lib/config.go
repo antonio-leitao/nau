@@ -8,6 +8,9 @@ import (
     "regexp"
 	"bufio"
 )
+
+var version = "v0.1.3"
+
 type Config struct {
 	Version        string
 	Url            string
@@ -26,7 +29,7 @@ type Config struct {
 
 // these have to be lowercase for better matching
 var CustomizableFields = []string{"AUTHOR", "EMAIL", "REMOTE", "BASE_COLOR", "EDITOR", "PROJECTS_PATH", "TEMPLATES_PATH", "ARCHIVES_PATH"}
-func readConfig() (Config, error) {
+func ReadConfig() (Config, error) {
     //read CONFIG file!
 	defaultConfig := Config{
 		Url:            "https://github.com/antonio-leitao/nau",
@@ -36,9 +39,9 @@ func readConfig() (Config, error) {
 		Remote:         "https://github.com/antonio-leitao",
 		Base_color:     "#814584",
 		Editor:         "nvim",
-		Projects_path:  "~/Documents/Projects",
-		Templates_path: "~/Documents/Templates",
-		Archives_path:  "~/Documents/Archives",
+		Projects_path:  "~/Projects",
+		Templates_path: "~/Templates",
+		Archives_path:  "~/Archives",
 	}
     //if file not exsits defaults config
 	configFile, err := ExpandPath("~/.config/naurc")
@@ -95,7 +98,7 @@ func readConfig() (Config, error) {
 //############## EXPOSED FUNCTIONS #################s
 // function to load the config stuff
 func LoadConfig() (Config, error) {
-	config, err := readConfig()
+	config, err := ReadConfig()
 	if err != nil {
 		return Config{}, err
 	}
@@ -115,6 +118,8 @@ func LoadConfig() (Config, error) {
 		return Config{}, err
 	}
 	config.Projects = project_count
+    //add version
+    config.Version = version
 	return config, nil
 }
 

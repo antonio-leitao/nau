@@ -309,18 +309,30 @@ func (m model) View() string {
 		b.String(),
 	)
 }
-func init_config(config lib.Config) {
-	model := initialModel(config.Base_color)
+func init_config(base_color string) {
+	model := initialModel(base_color)
 	if _, err := tea.NewProgram(model, tea.WithAltScreen()).Run(); err != nil {
 		log.Printf("NAU ERROR could not start program: %s\n", err)
 		os.Exit(1)
 	}
 }
-func Execute(config lib.Config, args []string) {
+func Execute(args []string) {
 	if len(args) == 0 {
+        config, err := lib.ReadConfig()
+        if err != nil{
+            log.Println("Could not load default config")
+        }
 		// No arguments provided
-		init_config(config)
+		init_config(config.Base_color)
 	} else if len(args) == 1 {
+        config, err := lib.LoadConfig()
+        if err != nil{
+            log.Println("Could not print config: ",err)
+            fmt.Println(`Run:
+nau config                 #to set all config values
+nau config [field] [value] #to set individual ones
+                `)
+        }
 		// Only field provided
 		lib.OutputField(config, args[0])
 	} else if len(args) > 1 {

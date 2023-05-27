@@ -13,7 +13,6 @@ import (
     "log"
 )
 
-var version = "v0.1.3"
 
 func main() {
     //load config
@@ -22,17 +21,15 @@ func main() {
 		log.Printf("NAU error: %v", err)
 		os.Exit(1)
 	}
-    //add version
-    config.Version = version
 	// Add the --version flag
-    app := rootCmd(config) 
+    app := rootCmd(config, config.Version) 
 	if err := app.Execute(); err != nil {
 		log.Printf("NAU error: %v", err)
         os.Exit(1)
 	}
 }
 
-func rootCmd(config lib.Config)*cobra.Command{
+func rootCmd(config lib.Config, version string)*cobra.Command{
 	var versionFlag bool
     //add root command
 	rootCmd := &cobra.Command{
@@ -47,7 +44,7 @@ func rootCmd(config lib.Config)*cobra.Command{
 		},
 	}
 
-	rootCmd.AddCommand(configCmd(config), newCmd(config), openCmd(config), archiveCmd(config))
+	rootCmd.AddCommand(configCmd(), newCmd(config), openCmd(config), archiveCmd(config))
 	rootCmd.CompletionOptions.HiddenDefaultCmd = true
 	rootCmd.SetHelpCommand(&cobra.Command{
 		Use:    "no-help",
@@ -57,12 +54,12 @@ func rootCmd(config lib.Config)*cobra.Command{
     return rootCmd
 
 }
-func configCmd(config lib.Config) *cobra.Command {
+func configCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config [field] [value]",
 		Short: "Set or get configuration values",
 		Run: func(cmd *cobra.Command, args []string) {
-            configure.Execute(config,args)
+            configure.Execute(args)
         },
     }
 	return cmd
