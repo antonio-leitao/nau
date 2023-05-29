@@ -57,6 +57,14 @@ func configCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config [field] [value]",
 		Short: "Set or get configuration values",
+		Long: `Manage nau's configuration.
+
+If it is the first time using now start by running "nau config" to set all configuration parameters.
+You can also set them individually by running "nau config field value" or print current values with
+"nau config field". Configurations are stored at "~/.config/naurc"`,
+        Example: `  nau config                # Set up all configuration values in NAU
+  nau config author           # Print current value of "author"
+  nau config author John Doe  # Set author field to "John Doe"`,
 		Run: func(cmd *cobra.Command, args []string) {
 			configure.Execute(args)
 		},

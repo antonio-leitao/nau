@@ -14,10 +14,6 @@ brew install nau
 # Getting Started
 NAU allows you to store permanent variables such as your name, email and website for automatically adding in projects.
 It also requires you to supply a directory where to store your Projects, where your Templates are and where you want to store your Archives.
-To display the current configuration settings, use the following command:
-```shell
-nau
-```
 You can set up `nau` through the `config` command.
 # Config
 By default `nau` loads its configuration form the file `~/.config/naurc`. You can edit this file manually or set all fields in one go by running the following command:
