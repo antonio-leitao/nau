@@ -20,7 +20,7 @@ type Project struct {
 	Lang         string
 	Color        string
 	Path         string
-	Timestamp    time.Time //Time the proejct was last modified
+    Timestamp    time.Time //Time the rpoject was last modified
 }
 
 func ToHyphenName(s string) string {

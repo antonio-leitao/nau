@@ -357,7 +357,7 @@ func (m Model) ChooseView() string {
 		title_text := "#ffffd7" //230
 		if m.cursor == i {
 			color := m.template_colors[i]
-			if !IsSufficientContrast(title_text, color) {
+			if !lib.IsSufficientContrast(title_text, color) {
 				title_text = "235"
 			}
 			choice = m.Styles.SelectedTemplate.

@@ -126,7 +126,19 @@ func archiveProject(destDir, srcDir string) error {
 	}
 	return nil
 }
+func Archive(projectPath string, archives_path string){
+    archivesPath, err := lib.ExpandPath(archives_path)
+	if err != nil {
+		log.Printf("NAU ERROR: %s", err)
+		os.Exit(1)
+	}
+	err = archiveProject(archivesPath, projectPath)
+	if err != nil {
+		log.Printf("NAU ERROR: %s", err)
+		os.Exit(1)
+	}
 
+}
 func Execute(config lib.Config, query string) {
 	projectList, _ := lib.GetProjects(config)
 	projects := Projects(projectList)
@@ -138,14 +150,5 @@ func Execute(config lib.Config, query string) {
 		os.Exit(1)
 	}
 	projectPath := projects[candidates[0].Index].Path
-	archivesPath, err := lib.ExpandPath(config.Archives_path)
-	if err != nil {
-		log.Printf("NAU ERROR: %s", err)
-		os.Exit(1)
-	}
-	err = archiveProject(archivesPath, projectPath)
-	if err != nil {
-		log.Printf("NAU ERROR: %s", err)
-		os.Exit(1)
-	}
+    Archive(projectPath,config.Archives_path)
 }
