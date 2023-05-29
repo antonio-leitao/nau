@@ -9,7 +9,7 @@ import (
 	"bufio"
 )
 
-var version = "v0.1.3"
+var version = "v0.2.0"
 
 type Config struct {
 	Version        string
