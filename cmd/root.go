@@ -1,32 +1,39 @@
 package root
+
 import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 
+	archive "github.com/antonio-leitao/nau/cmd/archive"
+	open "github.com/antonio-leitao/nau/cmd/open"
+	lib "github.com/antonio-leitao/nau/lib"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-    lib "github.com/antonio-leitao/nau/lib"
-    open "github.com/antonio-leitao/nau/cmd/open"
-    // archive "github.com/antonio-leitao/nau/cmd/archive"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/reflow/truncate"
+	"github.com/sahilm/fuzzy"
 )
 
 var (
 	targetProject lib.Project
 	targetAction  string
+	confirmation  bool
 )
 
 // we gonna need this for filtering and stuff
 type Projects []lib.Project
 
 func (p Projects) String(i int) string {
-	return p[i].Name
+	return p[i].Name + p[i].Lang
 }
 func (p Projects) Len() int {
 	return len(p)
 }
+
 const (
 	bullet   = "•"
 	ellipsis = "…"
@@ -37,52 +44,86 @@ type Styles struct {
 	BlurredStyle lipgloss.Style
 	MutedStyle   lipgloss.Style
 	//confirmation
-	PromptStyle lipgloss.Style
+	PromptStyle     lipgloss.Style
+	notFound        lipgloss.Style
+	SelectedStyle   lipgloss.Style
+	UnselectedStyle lipgloss.Style
 	//statusbar
 	Title     lipgloss.Style
 	Count     lipgloss.Style
 	StatusBar lipgloss.Style
-	//decorations
+	//deco
 	DividerDot lipgloss.Style
+	//colors
+	verySubduedColor lipgloss.AdaptiveColor
+	subduedColor     lipgloss.AdaptiveColor
 }
 
-func DefaultStyles() (s Styles) {
-	verySubduedColor := lipgloss.AdaptiveColor{Light: "#DDDADA", Dark: "#3C3C3C"}
-	subduedColor := lipgloss.AdaptiveColor{Light: "#9B9B9B", Dark: "#5C5C5C"}
+func DefaultStyles(base_color string) (s Styles) {
+	title_text := "#ffffd7" //230
+	if !lib.IsSufficientContrast(title_text, base_color) {
+		title_text = "235"
+	}
+	s.verySubduedColor = lipgloss.AdaptiveColor{Light: "#DDDADA", Dark: "#3C3C3C"}
+	s.subduedColor = lipgloss.AdaptiveColor{Light: "#9B9B9B", Dark: "#5C5C5C"}
 	s.Header = lipgloss.NewStyle().Margin(1, 0, 0, 0)
-	s.BlurredStyle = lipgloss.NewStyle().Foreground(subduedColor)
-	s.MutedStyle = lipgloss.NewStyle().Foreground(verySubduedColor)
+	s.BlurredStyle = lipgloss.NewStyle().Foreground(s.subduedColor)
+	s.MutedStyle = lipgloss.NewStyle().Foreground(s.verySubduedColor)
+	//other stuff
+	s.notFound = lipgloss.NewStyle().
+		Foreground(s.subduedColor).
+		Margin(1, 0, 1, 4)
 	//statusbar
 	s.Title = lipgloss.NewStyle().
-		Foreground(subduedColor)
+		Foreground(s.subduedColor)
 	s.Count = lipgloss.NewStyle().
-		Foreground(verySubduedColor)
+		Foreground(s.verySubduedColor)
 	s.StatusBar = lipgloss.NewStyle().
 		Padding(1, 0, 1, 1)
 	//deco
 	s.DividerDot = lipgloss.NewStyle().
-		Foreground(verySubduedColor).
+		Foreground(s.verySubduedColor).
 		SetString(" " + bullet + " ")
+	s.PromptStyle = lipgloss.NewStyle().
+		Margin(2, 0, 1, 0)
+	s.SelectedStyle = lipgloss.NewStyle().
+		Background(lipgloss.Color(base_color)).
+		Foreground(lipgloss.Color(title_text)).
+		Align(lipgloss.Center).
+		Padding(0, 3).
+		Margin(1, 1)
+	s.UnselectedStyle = lipgloss.NewStyle().
+		Background(lipgloss.Color("235")).
+		Foreground(lipgloss.Color("254")).
+		Align(lipgloss.Center).
+		Padding(0, 3).
+		Margin(1, 1)
 	return s
 }
 
 // keyMap defines a set of keybindings. To work for help it must satisfy
 // key.Map. It could also very easily be a map[string]key.Binding.
 type keyMap struct {
-	Up          key.Binding
-	Down        key.Binding
-	Left        key.Binding
-	Right       key.Binding
-	Open        key.Binding
-	Archive     key.Binding
-	Filter      key.Binding
-	ClearFilter key.Binding
-	// Keybindings used when setting a filter.
-	CancelWhileFiltering key.Binding
+	Up    key.Binding
+	Down  key.Binding
+	Left  key.Binding
+	Right key.Binding
+	//commands
+	Open    key.Binding
+	Archive key.Binding
+	//filter
+	Filter               key.Binding
+	ClearFilter          key.Binding
 	AcceptWhileFiltering key.Binding
+	//confirmation
+	Enter  key.Binding
+	Toggle key.Binding
 	//general
-	Help key.Binding
-	Quit key.Binding
+	Help   key.Binding
+	Quit   key.Binding
+	Cancel key.Binding
+	// The quit-no-matter-what keybinding. This will be caught when filtering.
+	ForceQuit key.Binding
 }
 
 // ShortHelp returns keybindings to be shown in the mini help view. It's part
@@ -135,7 +176,7 @@ var keys = keyMap{
 		key.WithHelp("esc", "clear filter"),
 	),
 	// Filtering.
-	CancelWhileFiltering: key.NewBinding(
+	Cancel: key.NewBinding(
 		key.WithKeys("esc"),
 		key.WithHelp("esc", "cancel"),
 	),
@@ -143,45 +184,89 @@ var keys = keyMap{
 		key.WithKeys("enter", "tab", "shift+tab", "ctrl+k", "up", "ctrl+j", "down"),
 		key.WithHelp("enter", "apply filter"),
 	),
+	//confirmation keys
+	Enter: key.NewBinding(
+		key.WithKeys("enter"),
+		key.WithHelp("enter", "confirm"),
+	),
+	Toggle: key.NewBinding(
+		key.WithKeys("left", "shift+tab", "tab", "right", "h", "l"),
+		key.WithHelp("←/→/tab", "choose"),
+	),
 	//general
 	Help: key.NewBinding(
 		key.WithKeys("?"),
 		key.WithHelp("?", "toggle help"),
 	),
 	Quit: key.NewBinding(
-		key.WithKeys("q", "esc", "ctrl+c"),
+		key.WithKeys("q", "esc", "crtl+c"),
 		key.WithHelp("q", "quit"),
 	),
+	ForceQuit: key.NewBinding(key.WithKeys("ctrl+c")),
 }
 
 type model struct {
-	keys            keyMap
-	help            help.Model
-	inputStyle      lipgloss.Style
-	lastKey         string
-	quitting        bool
-	state           string
-	cursor          int
-	projects        Projects
-	width           int
-	columnWidth     int
-	numCols         int
-	selectedProject lib.Project
-	styles          Styles
+	keys             keyMap
+	help             help.Model
+	inputStyle       lipgloss.Style
+	lastKey          string
+	quitting         bool
+	state            string
+	cursor           int
+	initial_projects Projects
+	projects         []lib.Project
+	width            int
+	columnWidth      int
+	numCols          int
+	selectedProject  lib.Project
+	styles           Styles
+	gap              int
+	filter           textinput.Model
 }
 
-func newModel(projects Projects) model {
+func newModel(base_color string, projects Projects) model {
 	m := model{
-		cursor:   0,
-		projects: projects,
-		keys:     keys,
-		state:    "browsing",
-		help:     help.New(),
-		width:    70,
-		styles:   DefaultStyles(),
+		cursor:           0,
+		initial_projects: projects,
+		keys:             keys,
+		state:            "browsing",
+		help:             help.New(),
+		width:            70,
+		styles:           DefaultStyles(base_color),
+		gap:              2,
+		filter:           textinput.New(),
 	}
+	confirmation = false
+	m.filter.Prompt = ""
+	m.applyFilter()
+	//update really has to be after
 	m.updateGrid()
 	return m
+}
+func (m *model) applyFilter() {
+	m.cursor = 0
+	//get query
+	query := m.filter.Value()
+	if query == "" {
+		m.projects = m.initial_projects
+	} else {
+		//get matches
+		results := fuzzy.FindFrom(query, m.initial_projects)
+		var filteredProjects []lib.Project
+		for _, r := range results {
+			filteredProjects = append(filteredProjects, m.initial_projects[r.Index])
+		}
+		//update projects
+		m.projects = filteredProjects
+	}
+	//toggle state if necessary
+	if len(m.projects) < 1 {
+		m.state = "stasis"
+	}
+}
+func (m *model) resetFilter() {
+	m.filter.SetValue("")
+	m.applyFilter()
 }
 
 func (m model) Init() tea.Cmd {
@@ -189,130 +274,247 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		// If we set a width on the help menu it can gracefully truncate
-		// its view as needed.
 		m.help.Width = msg.Width
-		//maybe no need for width, just recalc number of columns
+	case tea.KeyMsg:
+		if key.Matches(msg, m.keys.ForceQuit) {
+			m.quitting = true
+			return m, tea.Quit
+		}
+	}
+	switch m.state {
+	case "filtering":
+		cmds = append(cmds, m.handleFiltering(msg))
+	case "stasis":
+		cmds = append(cmds, m.handleStasis(msg))
+	case "confirm":
+		cmds = append(cmds, m.handleConfirmation(msg))
+	default:
+		cmds = append(cmds, m.handleBrowsing(msg))
+	}
+	return m, tea.Batch(cmds...)
+}
+func (m *model) handleFiltering(msg tea.Msg) tea.Cmd {
+	var cmds []tea.Cmd
+	// Handle keys
+	if msg, ok := msg.(tea.KeyMsg); ok {
+		switch {
+		case key.Matches(msg, m.keys.Cancel):
+			m.resetFilter()
+			m.applyFilter()
+			m.state = "browsing"
 
+		case key.Matches(msg, m.keys.AcceptWhileFiltering):
+			m.filter.Blur()
+			m.state = "browsing"
+			m.applyFilter()
+		}
+	}
+	// Update the filter text input component
+	newFilterInputModel, inputCmd := m.filter.Update(msg)
+	filterChanged := m.filter.Value() != newFilterInputModel.Value()
+	if filterChanged {
+		m.applyFilter()
+	}
+	m.filter = newFilterInputModel
+	cmds = append(cmds, inputCmd)
+
+	return tea.Batch(cmds...)
+}
+func (m *model) handleStasis(msg tea.Msg) tea.Cmd {
+	var cmds []tea.Cmd
+	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		//browsing
-		case key.Matches(msg, m.keys.Up) && m.state == "browsing":
-			m.lastKey = "↑"
-			m.HandleKeyPress("up")
-		case key.Matches(msg, m.keys.Down) && m.state == "browsing":
-			m.lastKey = "↓"
-			m.HandleKeyPress("down")
-		case key.Matches(msg, m.keys.Left) && m.state == "browsing":
-			m.lastKey = "←"
-			m.HandleKeyPress("left")
-		case key.Matches(msg, m.keys.Right) && m.state == "browsing":
-			m.lastKey = "→"
-			m.HandleKeyPress("right")
-		case key.Matches(msg, m.keys.Open) && m.state == "browsing":
-			m.lastKey = "opening"
+		case key.Matches(msg, m.keys.Quit):
 			m.quitting = true
-			targetAction = "open"
-			return m, tea.Quit
-		case key.Matches(msg, m.keys.Archive) && m.state == "browsing":
-			m.lastKey = "archiving"
-			m.quitting = true
-			targetAction = "archive"
-			return m, tea.Quit
-		case key.Matches(msg, m.keys.Filter) && m.state == "browsing":
+			return tea.Quit
+		case key.Matches(msg, m.keys.Help):
+			m.help.ShowAll = !m.help.ShowAll
+		case key.Matches(msg, m.keys.Filter):
 			m.state = "filtering"
-		//filtering
-		case key.Matches(msg, m.keys.CancelWhileFiltering) && m.state == "filtering":
+			m.filter.Focus()
+		}
+	}
+	return tea.Batch(cmds...)
+}
+
+func (m *model) handleBrowsing(msg tea.Msg) tea.Cmd {
+	var cmds []tea.Cmd
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+
+		case key.Matches(msg, m.keys.Quit):
+			m.quitting = true
+			return tea.Quit
+		case key.Matches(msg, m.keys.Up):
+			// Check if the cursor is in the top row
+			if m.cursor >= m.numCols {
+				m.cursor -= m.numCols
+			}
+			m.selectedProject = m.projects[m.cursor]
+			targetProject = m.selectedProject
+		case key.Matches(msg, m.keys.Down):
+			// Check if the cursor is in the last row
+			if m.cursor+m.numCols < len(m.projects) {
+				m.cursor += m.numCols
+			}
+			m.selectedProject = m.projects[m.cursor]
+			targetProject = m.selectedProject
+		case key.Matches(msg, m.keys.Left):
+			// Check if the cursor is in the least column
+			if m.cursor%m.numCols != 0 {
+				m.cursor--
+			}
+			m.selectedProject = m.projects[m.cursor]
+			targetProject = m.selectedProject
+		case key.Matches(msg, m.keys.Right):
+			// Check if the cursor is in the last column
+			if (m.cursor+1)%m.numCols != 0 && m.cursor < len(m.projects)-1 {
+				m.cursor++
+			}
+			m.selectedProject = m.projects[m.cursor]
+			targetProject = m.selectedProject
+		case key.Matches(msg, m.keys.Help):
+			m.help.ShowAll = !m.help.ShowAll
+		case key.Matches(msg, m.keys.Open):
+			targetAction = "open"
+			m.state = "confirm"
+		case key.Matches(msg, m.keys.Archive):
+			targetAction = "archive"
+			m.state = "confirm"
+		case key.Matches(msg, m.keys.Filter):
+			m.state = "filtering"
+			m.filter.Focus()
+		}
+	}
+	return tea.Batch(cmds...)
+}
+func (m *model) handleConfirmation(msg tea.Msg) tea.Cmd {
+	var cmds []tea.Cmd
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+		//next field
+		case key.Matches(msg, m.keys.Toggle):
+			confirmation = !confirmation
+		//submission
+		case key.Matches(msg, m.keys.Enter):
+			if confirmation {
+				m.quitting = true
+				return tea.Quit
+			} else {
+				m.state = "browsing"
+			}
+		case key.Matches(msg, m.keys.Cancel):
 			m.state = "browsing"
-		case key.Matches(msg, m.keys.AcceptWhileFiltering) && m.state == "filtering":
+		case key.Matches(msg, m.keys.Quit):
 			m.state = "browsing"
 		case key.Matches(msg, m.keys.Help):
 			m.help.ShowAll = !m.help.ShowAll
-		case key.Matches(msg, m.keys.Quit):
-			m.quitting = true
-			return m, tea.Quit
 		}
 	}
+	return tea.Batch(cmds...)
+}
 
-	return m, nil
-}
-func (m *model) HandleKeyPress(key string) {
-	// Check the key and perform the corresponding action
-	switch key {
-	case "up":
-		// Check if the cursor is in the top row
-		if m.cursor >= m.numCols {
-			m.cursor -= m.numCols
-		}
-	case "down":
-		// Check if the cursor is in the last row
-		if m.cursor+m.numCols < m.projects.Len() {
-			m.cursor += m.numCols
-		}
-	case "left":
-		// Check if the cursor is in the least column
-		if m.cursor%m.numCols != 0 {
-			m.cursor--
-		}
-	case "right":
-		// Check if the cursor is in the last column
-		if (m.cursor+1)%m.numCols != 0 && m.cursor < m.projects.Len()-1 {
-			m.cursor++
-		}
-	}
-	m.selectedProject = m.projects[m.cursor]
-	targetProject = m.selectedProject
-}
 func (m model) View() string {
 	if m.quitting {
 		return ""
+	}
+	if m.state == "confirm" {
+		return m.confirmationView()
 	}
 	//header
 	var sections []string
 	//status
 	sections = append(sections, m.statusView())
 	//Grid
-	sections = append(sections, m.GridView())
+	if m.state == "stasis" {
+		sections = append(
+			sections,
+			m.styles.notFound.Render("No projects found :("),
+		)
+	} else {
+		sections = append(sections, m.GridView())
+	}
 	//help
 	helpView := m.help.View(m.keys)
 	sections = append(sections, "\n"+helpView)
 	return lipgloss.JoinVertical(lipgloss.Left, sections...)
 }
 
+func (m model) confirmationView() string {
+
+	var aff, neg string
+	var sections []string
+	query := fmt.Sprintf("%s %s?", strings.Title(targetAction), targetProject.Display_Name)
+	sections = append(sections, m.styles.PromptStyle.Render(query))
+
+	if confirmation {
+		aff = m.styles.SelectedStyle.Render("Yes")
+		neg = m.styles.UnselectedStyle.Render("No")
+	} else {
+		aff = m.styles.UnselectedStyle.Render("Yes")
+		neg = m.styles.SelectedStyle.Render("No")
+	}
+	sections = append(sections,
+		lipgloss.NewStyle().Margin(0, 0, 2, 0).Render(lipgloss.JoinHorizontal(lipgloss.Left, aff, neg)))
+
+	return lipgloss.JoinVertical(lipgloss.Center, sections...)
+}
 func (m model) statusView() string {
 	var status string
-	totalItems := m.projects.Len()
-
-	var itemName string
-	if totalItems != 1 {
-		itemName = "projects"
+	if m.state != "filtering" {
+		//title
+		status += m.styles.Title.Render(`|\| /\ |_|`)
+		//filter status
+		if m.filter.Value() != "" {
+			status += m.styles.DividerDot.String()
+			f := strings.TrimSpace(m.filter.Value())
+			f = truncate.StringWithTail(f, 10, "…")
+			status += m.styles.Count.Render(fmt.Sprintf("“%s” ", f))
+		}
+		//number of items
+		totalItems := len(m.projects)
+		var itemName string
+		if totalItems != 1 {
+			itemName = "projects"
+		} else {
+			itemName = "projects"
+		}
+		status += m.styles.DividerDot.String()
+		itemsDisplay := fmt.Sprintf("%d %s", totalItems, itemName)
+		status += m.styles.Count.Render(itemsDisplay)
 	} else {
-		itemName = "projects"
+		//if we are filtering show the input thing
+		status += m.styles.Title.Render("Filter: ")
+		status += m.filter.View()
 	}
-	status += m.styles.Title.Render(`|\| /\ |_|`)
-	status += m.styles.DividerDot.String()
-	itemsDisplay := fmt.Sprintf("%d %s", totalItems, itemName)
-	status += m.styles.Count.Render(itemsDisplay)
 	return m.styles.StatusBar.Render(status)
 }
 
 func (m model) GridView() string {
-	// Maybe this doesnt need to be called everytime
-	m.updateGrid()
 	// Create a new slice to store the modified strings
 	modifiedStrings := make([]string, len(m.projects))
 	// Print the grid
 	var rows []string
-	for i := 0; i < m.projects.Len(); i += m.numCols {
+	for i := 0; i < len(m.projects); i += m.numCols {
 		end := i + m.numCols
-		if end > m.projects.Len() {
-			end = m.projects.Len()
+		if end > len(m.projects) {
+			end = len(m.projects)
 		}
 		// Apply the function on each element before printing
 		for j := i; j < end; j++ {
-			modifiedStrings[j] = m.renderProject(j)
+			if m.state == "filtering" {
+				modifiedStrings[j] = m.renderDimmedProject(j)
+			} else {
+				modifiedStrings[j] = m.renderProject(j)
+			}
 		}
 		row := lipgloss.JoinHorizontal(
 			lipgloss.Left,
@@ -333,16 +535,27 @@ func (m model) renderProject(index int) string {
 	}
 	if m.cursor == index {
 		return lipgloss.NewStyle().
-			Width(m.columnWidth).
+			Width(m.columnWidth-m.gap).
+			Margin(0, m.gap, 0, 0).
 			Background(lipgloss.Color(project.Color)).
 			Foreground(lipgloss.Color(title_text)).
 			Render(project.Display_Name)
 
 	} else {
 		return lipgloss.NewStyle().
-			Width(m.columnWidth).
+			Width(m.columnWidth-m.gap).
+			Margin(0, m.gap, 0, 0).
 			Render(project.Display_Name)
 	}
+}
+func (m model) renderDimmedProject(index int) string {
+	project := m.projects[index]
+
+	return lipgloss.NewStyle().
+		Width(m.columnWidth-m.gap).
+		Foreground(m.styles.subduedColor).
+		Margin(0, m.gap, 0, 0).
+		Render(project.Display_Name)
 }
 
 func (m model) getColumnWidth() int {
@@ -352,7 +565,7 @@ func (m model) getColumnWidth() int {
 			columnWidth = len(project.Display_Name)
 		}
 	}
-	return columnWidth + 1
+	return columnWidth + m.gap
 }
 func (m *model) updateGrid() {
 	// Calculate the column widths
@@ -370,6 +583,7 @@ func Execute(config lib.Config) {
 	})
 	//instantiate model
 	model := newModel(
+		config.Base_color,
 		Projects(projects),
 	)
 	//run the cli
@@ -377,8 +591,13 @@ func Execute(config lib.Config) {
 		fmt.Printf("Could not start program :(\n%v\n", err)
 		os.Exit(1)
 	}
+	if !confirmation {
+		return
+	}
 	switch targetAction {
 	case "open":
-        open.Open(targetProject.Path,config.Editor)
+		open.Open(targetProject.Path, config.Editor)
+	case "archive":
+		archive.Archive(targetProject.Path, config.Archives_path)
 	}
 }

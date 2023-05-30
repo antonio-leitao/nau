@@ -14,7 +14,18 @@ brew install nau
 # Getting Started
 NAU allows you to store permanent variables such as your name, email and website for automatically adding in projects.
 It also requires you to supply a directory where to store your Projects, where your Templates are and where you want to store your Archives.
-You can set up `nau` through the `config` command.
+Most of the the commands can be run by the interactive UI
+
+```shell
+nau
+```
+
+<p align="center">
+<img alt="NAU demo" src="assets/root.gif" width="600" />
+</p>
+
+The fastest usage however is to run each command individually as needed. 
+Start by setting up `nau` through the `config` command.
 # Config
 By default `nau` loads its configuration form the file `~/.config/naurc`. You can edit this file manually or set all fields in one go by running the following command:
 ```shell
@@ -27,7 +38,7 @@ nau config
 
 This command will prompt the user to set each configuration field individually.
 
-#### Print a single field
+### Print a single field
 To print the value of a specific configuration field, use the following command:
 
 ```shell
@@ -40,7 +51,7 @@ nau config [field]
 
 Replace `[field]` with the name of the configuration field. This command will print the value of the specified field to the standard output.
 
-#### Set single a single field
+### Set single a single field
 To set the value of a specific configuration field, use the following command:
 
 ```shell
@@ -65,12 +76,14 @@ Below are all available fields with their explanations:
 - `ARCHIVES_PATH`: Where should NAU place archived projects (see more on the `archive` command)
 
 NAU is built to be modular. Imagine a Makefile but for you computer. Is is aimed at managing your projects. Currently has these commands implemented
+# Show
+Run show to see the default configuration and `nau`'s homescreen.'
+```shell
+nau show
+```
 
 # Open 
 Opens a specific project using specified `editor`, default is `neovim`.
-
-> **Note**
-> `nau` will run `make open` command on the directory. You can add/edit this makefile command to enable further customization. 
 
 ```shell
 nau open <project>
@@ -85,7 +98,7 @@ Creates a new project either empty or from a prebuilt `nau` template.
 If `template` is specified will prompt the user for information in order to create a new project from the specified template. If it is not specified will prompt the user to choose which template to load.
 
 > **Note**
-> `nau` will run `make new` command on the directtory after the template is collapsed. You can add/edit this makefile command to enable further customization. 
+> `nau` will run `make init` command on the directtory after the template is collapsed. You can add/edit this makefile command to enable further customization. 
 
 ```shell
 nau new <template>
@@ -127,9 +140,5 @@ projects
 ```
 ### `.nau` file
 Each template should have a `.nau` file that specified which files are templated and have to be collapsed, the syntax is the same as `.gitignore`.
-
-### `make init`
-After collapsing the template `nau` will attempt to run the Makefile command `make init` this is usefull to initiate any template specific environments such as node or conda.
-
-# Template Syntax
+### Syntax
 NAU uses golang's templating syntax to collapse the templates. Currently
