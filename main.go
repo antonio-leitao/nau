@@ -7,6 +7,7 @@ import (
 	configure "github.com/antonio-leitao/nau/cmd/configure"
 	new "github.com/antonio-leitao/nau/cmd/new"
 	open "github.com/antonio-leitao/nau/cmd/open"
+	show "github.com/antonio-leitao/nau/cmd/show"
 	lib "github.com/antonio-leitao/nau/lib"
 	"github.com/spf13/cobra"
 	"log"
@@ -33,7 +34,7 @@ func rootCmd(config lib.Config, version string) *cobra.Command {
 	//add root command
 	rootCmd := &cobra.Command{
 		Use:   "nau",
-        Short: `|\| /\ |_|: command line project manager`,
+		Short: `|\| /\ |_|: command line project manager`,
 		Run: func(cmd *cobra.Command, args []string) {
 			if versionFlag {
 				fmt.Println("nau version:", version)
@@ -42,8 +43,13 @@ func rootCmd(config lib.Config, version string) *cobra.Command {
 			root.Execute(config)
 		},
 	}
-
-	rootCmd.AddCommand(configCmd(), newCmd(config), openCmd(config), archiveCmd(config))
+    rootCmd.AddCommand(
+        configCmd(),
+        newCmd(config),
+        openCmd(config),
+        archiveCmd(config),
+        showCmd(config),
+        )
 	rootCmd.CompletionOptions.HiddenDefaultCmd = true
 	rootCmd.SetHelpCommand(&cobra.Command{
 		Use:    "no-help",
@@ -62,7 +68,7 @@ func configCmd() *cobra.Command {
 If it is the first time using now start by running "nau config" to set all configuration parameters.
 You can also set them individually by running "nau config field value" or print current values with
 "nau config field". Configurations are stored at "~/.config/naurc"`,
-        Example: `  nau config                # Set up all configuration values in NAU
+		Example: `  nau config                # Set up all configuration values in NAU
   nau config author           # Print current value of "author"
   nau config author John Doe  # Set author field to "John Doe"`,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -82,8 +88,8 @@ Collapse an existing template from the "templates" folder. The user is prompted 
 information such as project_name and description. Upon initialization of the template, nau runs
 "make init" command on the directory. Use this for adding extra features to the template,
 such as enviroment initialization.`,
-		Example: `  nau new template            # Start a new project using template "template"
-  nau new  # Choose the template before starting`,
+		Example: `  nau new template  # Start a new project using template "template"
+  nau new           # Choose the template before starting`,
 		Run: func(cmd *cobra.Command, args []string) {
 			if len(args) > 0 {
 				new.Execute(config, args[0])
@@ -103,15 +109,15 @@ func openCmd(config lib.Config) *cobra.Command {
 
 This command opens the specified project. If no project is provided, it opens the default project.
 You can specify the project by providing its name as an argument.`,
-		Example: `  nau open myproject            # Open the project named "myproject"
-  nau open myproj  # Open the project that best matches "myproj"`,
+		Example: `  nau open myproject  # Open the project named "myproject"
+  nau open myproj     # Open the project that best matches "myproj"`,
 		Short: "Open a project",
 		Run: func(cmd *cobra.Command, args []string) {
-            if len(args)>0{
-                open.Execute(config, args[0])
-            }else{
-                cmd.Help()
-            }
+			if len(args) > 0 {
+				open.Execute(config, args[0])
+			} else {
+				cmd.Help()
+			}
 		},
 	}
 
@@ -127,14 +133,29 @@ func archiveCmd(config lib.Config) *cobra.Command {
 The project considered is the best fuzzy match. Use "nau" for more control. Before .tar and .zip
 the command "make archive" is run on the directory. Define it in your project's file to enable extra
 features, such as deleting git and node dependedncies.`,
-		Example: `  nau aarchive myproject            # Archive the project named "myproject"
-  nau archive myproj  # Archive the project that best matches "myproj"`,
+		Example: `  nau archive myproject  # Archive the project named "myproject"
+  nau archive myproj     # Archive the project that best matches "myproj"`,
 		Run: func(cmd *cobra.Command, args []string) {
 			if len(args) > 0 {
 				archive.Execute(config, args[0])
 			} else {
-                cmd.Help()
+				cmd.Help()
 			}
+		},
+	}
+
+	return cmd
+}
+func showCmd(config lib.Config) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "show [stats]",
+		Short: "Show diverse information about your projects",
+		Long: `Gathers, summarises and shows diverse information about your projects.
+
+Currently under construction. Run with no arguments to view current configuration and home screen.`,
+		Example: `  nau show        # Show current "nau" configuration`,
+		Run: func(cmd *cobra.Command, args []string) {
+			show.Execute(config)
 		},
 	}
 
